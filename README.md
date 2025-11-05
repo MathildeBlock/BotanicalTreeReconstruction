@@ -6,21 +6,10 @@ A short description of the project.
 
 The directory structure of the project looks like this:
 ```txt
-├── .github/                  # Github actions and dependabot
-│   ├── dependabot.yaml
-│   └── workflows/
-│       └── tests.yaml
 ├── configs/                  # Configuration files
 ├── data/                     # Data directory
 │   ├── processed
 │   └── raw
-├── dockerfiles/              # Dockerfiles
-│   ├── api.Dockerfile
-│   └── train.Dockerfile
-├── docs/                     # Documentation
-│   ├── mkdocs.yml
-│   └── source/
-│       └── index.md
 ├── models/                   # Trained models
 ├── notebooks/                # Jupyter notebooks
 ├── reports/                  # Reports
@@ -48,8 +37,3 @@ The directory structure of the project looks like this:
 ├── requirements_dev.txt      # Development requirements
 └── tasks.py                  # Project tasks
 ```
-
-
-Created using [mlops_template](https://github.com/SkafteNicki/mlops_template),
-a [cookiecutter template](https://github.com/cookiecutter/cookiecutter) for getting
-started with Machine Learning Operations (MLOps).
