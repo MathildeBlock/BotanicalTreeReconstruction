@@ -3,8 +3,15 @@
 COLMAP Pipeline Module
 
 This module provides a unified interface for running COLMAP structure-from-motion
-reconstruction with various optimization and filtering options.
+reconstruction with various optimization and filtering options using pycolmap.
 """
+
+# Try to use pycolmap first, fall back to subprocess if not available
+try:
+    from .pycolmap_pipeline import run_pycolmap_pipeline, PyColmapPipeline
+    PYCOLMAP_AVAILABLE = True
+except ImportError:
+    PYCOLMAP_AVAILABLE = False
 
 import subprocess
 import os
@@ -14,7 +21,7 @@ from typing import Optional, Dict, Any, List
 import tempfile
 import yaml
 from rich.console import Console
-from rich.progress import Progress
+from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn
 import typer
 
 from .read_write_model import read_model, write_model

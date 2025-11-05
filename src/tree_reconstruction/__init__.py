@@ -36,6 +36,7 @@ __author__ = "Tree Reconstruction Team"
 # Import main modules
 from . import segmentation
 from . import colmap_pipeline
+from . import pycolmap_pipeline
 from . import filtering
 from . import visualization
 from . import config
@@ -46,7 +47,8 @@ from .read_write_model import read_model, write_model
 
 __all__ = [
     "segmentation",
-    "colmap_pipeline", 
+    "colmap_pipeline",
+    "pycolmap_pipeline", 
     "filtering",
     "visualization",
     "config",
