@@ -1,0 +1,36 @@
+colmap:
+  feature_type: sift
+  max_features: 30000
+  run_dense: false
+  sequential: true
+  use_gpu: true
+data:
+  filtered_images: data/processed/filtered_images
+  input_images: data/raw
+  output_masks: data/processed/masks
+filtering:
+  add_points: false
+  coord_threshold: 3.0
+  filter_type: combined
+  min_observations: 3
+  outlier_threshold: 2.0
+output:
+  filtered_model: models/filtered
+  logs: logs
+  sparse_model: models/sparse
+  visualizations: reports/figures
+project_name: tree_reconstruction
+segmentation:
+  batch_size: 4
+  confidence: 0.5
+  device: cuda
+  min_vegetation_ratio: 0.1
+  model_path: null
+visualization:
+  max_points: 50000
+  num_images: 6
+  plot_types:
+  - 3d
+  - projected
+  - stats
+  point_size: 8

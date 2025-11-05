@@ -3,20 +3,22 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "tree_reconstruction"
-version = "0.0.1"
-description = "A short description of the project."
+name = "botanical_tree_reconstruction"
+version = "0.1.0"
+description = "Complete pipeline for 3D tree reconstruction from aerial images using segmentation and COLMAP"
 authors = [
-  { name = "Your name (or your organization/company/team)", email = "your@email.com" },
+  { name = "Tree Reconstruction Team", email = "your@email.com" },
 ]
 
-keywords = ["machine learning", "MLOps"]
+keywords = ["computer vision", "3D reconstruction", "COLMAP", "segmentation", "point clouds"]
 classifiers = [
-  "Development Status :: 3 - Alpha",
+  "Development Status :: 4 - Beta",
   "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Scientific/Engineering :: Image Processing",
 ]
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.9"
 dynamic = ["dependencies", "optional-dependencies"]
 
 [tool.setuptools.dynamic]
@@ -33,3 +35,9 @@ select = ["I", "N", "E", "W", ]
 
 [tool.coverage.run]
 omit = ["tests/*"]
+
+[project.scripts]
+tree-reconstruct = "tree_reconstruction.cli:main"
+tree-segment = "tree_reconstruction.segmentation:main"
+tree-colmap = "tree_reconstruction.colmap_pipeline:main"
+tree-visualize = "tree_reconstruction.visualization:main"
