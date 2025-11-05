@@ -26,8 +26,8 @@ A comprehensive Python toolkit for 3D tree reconstruction from aerial imagery us
 ### Install from source
 
 ```bash
-git clone https://github.com/johannebirkchristensen/Botanical-Tree-Reconstruction.git
-cd Botanical-Tree-Reconstruction
+git clone https://github.com/MathildeBlock/BotanicalTreeReconstruction.git
+cd BotanicalTreeReconstruction
 pip install -e .
 ```
 
