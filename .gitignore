@@ -17,8 +17,6 @@ manual_test/
 test_*.py
 *_test.py
 core.*
-models/
-data/
 reports/
 logs/
 *.db
