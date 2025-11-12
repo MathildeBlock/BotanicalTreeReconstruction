@@ -19,7 +19,7 @@ BotanicalTreeReconstruction/
     └── README.md           # Scripts documentation
 ```
 
-## 🚀 Quick Start
+## 🐆 Quick Start
 
 ### Prerequisites
 
@@ -175,10 +175,3 @@ Main dependencies:
 - Large image sets may require significant memory
 - For best results, use images with good overlap and coverage
 
-## 🤝 Contributing
-
-This is a research project for botanical tree reconstruction. Feel free to contribute improvements or report issues.
-
-## 📄 License
-
-This project is licensed under the MIT License.
