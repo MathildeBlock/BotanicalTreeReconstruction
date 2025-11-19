@@ -5,6 +5,8 @@ data/segmentation_masks/*
 !data/segmentation_masks/.gitkeep
 models/*
 !models/.gitkeep
+!models/model.pth
+!models/*.pth
 
 # Large output files
 *.db
