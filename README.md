@@ -6,6 +6,11 @@ A Python toolkit for 3D tree reconstruction from aerial imagery using COLMAP str
 
 ### 1. Installation and Setup
 
+**Clone repository:**
+```bash
+git clone https://github.com/MathildeBlock/BotanicalTreeReconstruction.git
+```
+
 **Install Python dependencies:**
 ```bash
 cd BotanicalTreeReconstruction
@@ -193,6 +198,58 @@ Filters COLMAP 3D points using segmentation masks with visibility-based threshol
 - `--threshold`: Mask pixel threshold value (default: 10)
 - `--combine`: Mask combination: "or" or "and" (default: or)
 - `--examples`: Number of visualization examples (default: 5)
+
+### pipeline_visualization.py
+
+Creates comprehensive visualizations showing the complete reconstruction pipeline.
+
+**Key Arguments:**
+- `--config`: Path to filtering config JSON file (auto-loads parameters from filter_colmap_with_masks.py)
+- `--images`: Directory containing original images (required if no config)
+- `--masks`: Directory containing segmentation masks (optional, auto-detected from config)
+- `--original_model`: Path to original COLMAP model directory (optional, auto-detected from config)
+- `--filtered_model`: Path to filtered COLMAP model directory (optional, auto-detected from config)
+- `--ray_model`: Path to ray-enhanced COLMAP model directory
+- `--output`: Output visualization image path (required)
+- `--n_images`: Number of sample images to visualize (default: 3)
+- `--point_size`: Size of projected points (default: 1.0)
+- `--mask_type`: Type of masks to use - 'rough', 'fine', or 'both' (default: 'both') - should match what was used in filtering
+
+Creates a 5-column visualization showing:
+1. **Original Image** - Raw input images
+2. **Segmentation Mask** - Tree segmentation overlaid on images  
+3. **Original COLMAP** - Points from initial reconstruction
+4. **Filtered COLMAP** - Points after mask-based filtering
+5. **Ray Enhanced** - Points after ray densification
+
+**Usage Examples:**
+
+```bash
+# Method 1: Using config file (recommended - auto-loads filtering parameters)
+python scripts/pipeline_visualization.py \
+    --config data/sparse_filtered/0/filtering_config.json \
+    --output outputs/pipeline_comparison.png \
+    --n_images 3 \
+    --point_size 2.0
+
+# Method 2: Manual parameter specification
+python scripts/pipeline_visualization.py \
+    --images data/images \
+    --masks data/masks \
+    --original_model data/sparse/0 \
+    --filtered_model data/sparse_filtered/0 \
+    --ray_model data/sparse_ray_enhanced/0 \
+    --output outputs/pipeline_comparison.png \
+    --n_images 3 \
+    --point_size 2.0 \
+    --mask_type both
+```
+
+**Note:** When you run `filter_colmap_with_masks.py`, it automatically saves a `filtering_config.json` file in two locations:
+1. **Model directory**: `data/sparse_filtered/0/filtering_config.json` (for direct access)
+2. **Configs directory**: `configs/filtering_or_10_1911_1234.json` (for organization)
+
+This config file contains all the parameters used for filtering, ensuring the visualization uses exactly the same settings.
 
 ## 📊 Output
 

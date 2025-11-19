@@ -6,6 +6,7 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 import argparse
 import sys
+import json
 
 import argparse
 import sys
@@ -291,6 +292,40 @@ Examples:
     # Save updated model
     print(f"\n💾 Saving filtered model...")
     write_model(cameras, images, points3D_filtered, output_model_dir, ext=f".{args.format}")
+    
+    # Save filtering configuration for visualization
+    config = {
+        'timestamp': timestamp,
+        'original_model': args.colmap,
+        'filtered_model': output_model_dir,
+        'images_dir': args.images,
+        'rough_mask_dir': args.rough_mask,
+        'fine_mask_dir': args.fine_mask,
+        'mask_threshold': args.threshold,
+        'combine_operation': args.combine,
+        'visibility_threshold': args.visibility_threshold,
+        'rough_suffix': args.rough_suffix,
+        'fine_suffix': args.fine_suffix,
+        'img_extension': args.img_ext,
+        'model_format': args.format,
+        'original_points': len(points3D),
+        'filtered_points': len(points3D_filtered),
+        'points_removed': len(points3D) - len(points3D_filtered)
+    }
+    
+    config_path = os.path.join(output_model_dir, 'filtering_config.json')
+    with open(config_path, 'w') as f:
+        json.dump(config, f, indent=2)
+    print(f"💾 Saved filtering config: {config_path}")
+    
+    # Also save to configs folder for organization
+    configs_dir = os.path.join(os.path.dirname(os.path.dirname(output_model_dir)), 'configs')
+    os.makedirs(configs_dir, exist_ok=True)
+    config_name = f"filtering_{args.combine}_{args.threshold}_{timestamp}.json"
+    configs_path = os.path.join(configs_dir, config_name)
+    with open(configs_path, 'w') as f:
+        json.dump(config, f, indent=2)
+    print(f"💾 Saved filtering config to configs: {configs_path}")
     
     # Print summary
     print(f"\n📊 SUMMARY:")
