@@ -14,7 +14,6 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 import sys
 import random
-import json
 
 # Add the parent directory to the path to import read_write_model
 sys.path.append(str(Path(__file__).parent))
@@ -22,11 +21,10 @@ from read_write_model import read_model, Camera, Image, Point3D
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Create comprehensive pipeline visualization')
-    parser.add_argument('--config', type=str, help='Path to filtering config JSON file (auto-loads parameters)')
-    parser.add_argument('--images', type=str, help='Path to original images directory (required if no config)')
-    parser.add_argument('--masks', type=str, help='Path to segmentation masks directory (optional, auto-detected from config)')
-    parser.add_argument('--original_model', type=str, help='Path to original COLMAP model directory (optional, auto-detected from config)')
-    parser.add_argument('--filtered_model', type=str, help='Path to filtered COLMAP model directory (optional, auto-detected from config)')
+    parser.add_argument('--images', type=str, required=True, help='Path to original images directory')
+    parser.add_argument('--masks', type=str, help='Path to segmentation masks directory (optional)')
+    parser.add_argument('--original_model', type=str, required=True, help='Path to original COLMAP model directory')
+    parser.add_argument('--filtered_model', type=str, required=True, help='Path to filtered COLMAP model directory')
     parser.add_argument('--ray_model', type=str, help='Path to ray-enhanced COLMAP model directory')
     parser.add_argument('--output', type=str, required=True, help='Output image path')
     parser.add_argument('--n_images', type=int, default=3, help='Number of images to sample for visualization')
@@ -138,50 +136,22 @@ def find_mask_file(masks_dir, image_name, mask_type):
     
     return None, None
 
-def load_config(config_path):
-    """Load filtering configuration from JSON file"""
-    try:
-        with open(config_path, 'r') as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError) as e:
-        print(f"Warning: Could not load config file {config_path}: {e}")
-        return None
+
 
 def create_pipeline_visualization(args):
     """Create comprehensive pipeline visualization"""
     
-    # Load config if provided and override arguments
-    config = None
-    if args.config:
-        config = load_config(args.config)
-        if config:
-            print(f"📄 Loaded config from {args.config}")
-            # Override arguments with config values
-            if not args.images:
-                args.images = config.get('images_dir')
-            if not args.masks:
-                args.masks = config.get('rough_mask_dir')  # Use rough mask dir as default
-            if not args.original_model:
-                args.original_model = config.get('original_model')
-            if not args.filtered_model:
-                args.filtered_model = config.get('filtered_model')
-            
-            # Determine mask type from config
-            if config.get('combine_operation') == 'and':
-                args.mask_type = 'fine'  # AND operation typically uses fine masks
-            elif config.get('combine_operation') == 'or':
-                args.mask_type = 'both'  # OR operation can use both
-            
-            print(f"📋 Using config parameters:")
-            print(f"   Images: {args.images}")
-            print(f"   Masks: {args.masks}")
-            print(f"   Original model: {args.original_model}")
-            print(f"   Filtered model: {args.filtered_model}")
-            print(f"   Mask type: {args.mask_type}")
+    # All parameters now provided directly via command line arguments
     
-    # Validate required arguments
+    # Validate required arguments (all are required now)
     if not args.images:
-        print("Error: --images is required (either directly or via --config)")
+        print("Error: --images is required")
+        return
+    if not args.original_model:
+        print("Error: --original_model is required")
+        return
+    if not args.filtered_model:
+        print("Error: --filtered_model is required")
         return
     
     # Load all models
