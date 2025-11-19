@@ -1,0 +1,20 @@
+{
+  "pipeline_run": {
+    "timestamp": "1911_1611",
+    "start_time": "2025-11-19T16:11:15.009467",
+    "end_time": "2025-11-19T16:27:09.190959",
+    "duration_seconds": 954.181492,
+    "success": true
+  },
+  "inputs": {
+    "images_directory": "/work3/s204201/BotanicalTreeReconstruction/data/raw",
+    "model_file": "/work3/s204201/BotanicalTreeReconstruction/models/model.pth"
+  },
+  "outputs": {
+    "masks_directory": "/work3/s204201/BotanicalTreeReconstruction/data/segmentation_masks",
+    "colmap_model": "/work3/s204201/BotanicalTreeReconstruction/models/colmap_reconstruction",
+    "filtered_model": "/work3/s204201/BotanicalTreeReconstruction/models/colmap_filtered",
+    "visualization": "/work3/s204201/BotanicalTreeReconstruction/outputs/pipeline_visualization_1911_1611.png"
+  },
+  "parameters": {
+    "images": 
