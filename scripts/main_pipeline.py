@@ -33,23 +33,38 @@ class PipelineRunner:
         
         # Set input images directory
         self.images_dir = Path(args.images)
+        
+        # Set model path (if provided)
+        self.model_path = Path(args.model) if args.model else None
             
-        # Set up output directories
+        # Set up output directories (use provided paths or defaults)
         self.masks_dir = self.base_dir / "data" / "segmentation_masks"
-        self.colmap_output = self.base_dir / "models" / f"colmap_output_{self.timestamp}"
-        self.filtered_output = self.base_dir / "models" / f"colmap_filtered_{self.timestamp}"
+        self.colmap_output = self.base_dir / "models" / "colmap_reconstruction"
+        self.filtered_output = Path(args.filtered_model) if args.filtered_model else self.base_dir / "models" / "colmap_filtered"
+        self.ray_output = self.base_dir / "models" / "colmap_ray_enhanced"
         self.viz_output = self.base_dir / "outputs" / f"pipeline_visualization_{self.timestamp}.png"
         
-        # Ensure output directories exist
+        # Override COLMAP input if provided
+        self.colmap_input = None
+        if args.colmap_model:
+            self.colmap_input = Path(args.colmap_model)
+        
+        # Ensure output directories exist (only for directories we'll create)
         self.masks_dir.mkdir(parents=True, exist_ok=True)
-        self.colmap_output.mkdir(parents=True, exist_ok=True)
-        self.filtered_output.mkdir(parents=True, exist_ok=True)
+        if not args.colmap_model:
+            self.colmap_output.mkdir(parents=True, exist_ok=True)
+        if not args.filtered_model:
+            self.filtered_output.mkdir(parents=True, exist_ok=True)
+        self.ray_output.mkdir(parents=True, exist_ok=True)
         self.viz_output.parent.mkdir(parents=True, exist_ok=True)
         
         print(f"🚀 Starting Botanical Tree Reconstruction Pipeline - {self.timestamp}")
         print(f"📁 Input images: {self.images_dir}")
-        print(f"🎯 Model: {args.model}")
-        print(f"📊 Output base: models/*_{self.timestamp}")
+        if args.model:
+            print(f"🎯 Model: {args.model}")
+        print(f"📊 COLMAP output: {self.colmap_output}")
+        print(f"📊 Filtered output: {self.filtered_output}")
+        print(f"📊 Ray enhanced: {self.ray_output}")
 
     def run_command(self, cmd, description, check=True):
         """Run a command with error handling and logging"""
@@ -117,13 +132,89 @@ class PipelineRunner:
         else:
             raise FileNotFoundError(f"COLMAP sparse model not found at {sparse_dir}")
 
+    def check_dependencies(self):
+        """Check if required dependencies exist for enabled steps"""
+        print(f"🔍 Checking pipeline dependencies...")
+        
+        missing_deps = []
+        
+        # Check segmentation dependencies
+        if not self.args.skip_segmentation:
+            if not self.args.model:
+                missing_deps.append("Segmentation model path required (--model)")
+            elif not self.model_path.exists():
+                missing_deps.append(f"Segmentation model not found: {self.model_path}")
+        else:
+            # If skipping segmentation, check if masks exist in standard location
+            if not self.masks_dir.exists():
+                missing_deps.append(f"Segmentation masks directory not found: {self.masks_dir}")
+                missing_deps.append("  -> Either run segmentation (remove --skip-segmentation) or ensure masks exist in data/segmentation_masks")
+        
+        # Check COLMAP dependencies  
+        if not self.args.skip_filtering:
+            if self.args.skip_colmap:
+                # If skipping COLMAP but filtering is enabled, need existing model
+                if self.args.colmap_model:
+                    colmap_model_dir = self.args.colmap_model / "sparse" / "0" if not (self.args.colmap_model / "cameras.bin").exists() else self.args.colmap_model
+                else:
+                    # Check standard location
+                    colmap_model_dir = self.colmap_output / "sparse" / "0"
+                
+                if not colmap_model_dir.exists():
+                    if self.args.colmap_model:
+                        missing_deps.append(f"COLMAP model not found: {colmap_model_dir}")
+                    else:
+                        missing_deps.append(f"COLMAP model not found in standard location: {colmap_model_dir}")
+                        missing_deps.append("  -> Either run COLMAP (remove --skip-colmap) or specify --colmap-model")
+        
+        # Check filtering dependencies for visualization
+        if not self.args.skip_visualization:
+            if self.args.skip_filtering:
+                # If skipping filtering but visualization is enabled, check if filtered model exists
+                if not self.filtered_output.exists():
+                    missing_deps.append(f"Filtered COLMAP model not found: {self.filtered_output}")
+                    missing_deps.append("  -> Either run filtering (remove --skip-filtering) or provide existing filtered model")
+            
+            # Also need original COLMAP model for visualization
+            if self.args.skip_colmap and not self.args.colmap_model:
+                colmap_model_dir = self.colmap_output / "sparse" / "0"
+                if not colmap_model_dir.exists():
+                    missing_deps.append(f"Original COLMAP model needed for visualization: {colmap_model_dir}")
+                    missing_deps.append("  -> Either run COLMAP (remove --skip-colmap) or specify --colmap-model")
+        
+        if missing_deps:
+            print(f"\n❌ Missing dependencies:")
+            for dep in missing_deps:
+                if dep.startswith("  ->"):
+                    print(f"    {dep}")
+                else:
+                    print(f"  • {dep}")
+            print(f"\n💡 Suggestions:")
+            print(f"  • Run without skip flags to generate missing files")
+            print(f"  • Or provide existing files in the expected locations")
+            print(f"  • Use --help to see all available options")
+            sys.exit(1)
+        
+        print(f"✅ All dependencies satisfied")
+
     def step3_filtering(self):
         """Filter point cloud with segmentation masks"""
         print(f"\n🔍 STEP 3: Point Cloud Filtering")
         
+        # Determine which COLMAP model to use
+        if self.colmap_input:
+            # Use provided existing model
+            colmap_model_path = self.colmap_input
+            if not (colmap_model_path / "cameras.bin").exists():
+                # Assume it's a model directory that contains sparse/0
+                colmap_model_path = colmap_model_path / "sparse" / "0"
+        else:
+            # Use the model we just created
+            colmap_model_path = self.colmap_output / "sparse" / "0"
+        
         cmd = [
             "python", "filter_colmap_with_masks.py",
-            "--colmap", str(self.colmap_output / "sparse" / "0"),
+            "--colmap", str(colmap_model_path),
             "--images", str(self.images_dir),
             "--rough-mask", str(self.masks_dir),
             "--fine-mask", str(self.masks_dir),
@@ -136,17 +227,48 @@ class PipelineRunner:
         self.run_command(cmd, "Point cloud filtering with masks")
         print(f"✅ Filtered model saved to {self.filtered_output}")
 
-    def step4_visualization(self):
-        """Create comprehensive pipeline visualization"""
-        print(f"\n📊 STEP 4: Pipeline Visualization")
+    def step4_ray_enhancement(self):
+        """Add points using ray densification"""
+        print(f"\n🌟 STEP 4: Ray Enhancement")
         
-        # Use direct parameter approach
+        cmd = [
+            "python", "add_points_with_rays.py",
+            "--colmap_model_dir", str(self.filtered_output),
+            "--images_dir", str(self.images_dir),
+            "--rough_mask_dir", str(self.masks_dir),
+            "--fine_mask_dir", str(self.masks_dir),
+            "--output_dir", str(self.ray_output.parent),
+            "--output-folder-name", self.ray_output.name,
+            "--mask_thresh", "10",
+            "--samples_per_image", "1000",
+            "--depth_samples", "50"
+        ]
+        
+        self.run_command(cmd, "Ray-based point densification")
+        print(f"✅ Ray-enhanced model saved to {self.ray_output}")
+
+    def step5_visualization(self):
+        """Create comprehensive pipeline visualization"""
+        print(f"\n📊 STEP 5: Pipeline Visualization")
+        
+        # Determine which original COLMAP model to use for visualization
+        if self.colmap_input:
+            # Use provided existing model
+            original_model_path = self.colmap_input
+            if not (original_model_path / "cameras.bin").exists():
+                # Assume it's a model directory that contains sparse/0
+                original_model_path = original_model_path / "sparse" / "0"
+        else:
+            # Use the model we just created
+            original_model_path = self.colmap_output / "sparse" / "0"
+        
         cmd = [
             "python", "pipeline_visualization.py",
             "--images", str(self.images_dir),
             "--masks", str(self.masks_dir),
-            "--original_model", str(self.colmap_output / "sparse" / "0"),
+            "--original_model", str(original_model_path),
             "--filtered_model", str(self.filtered_output),
+            "--ray_model", str(self.ray_output),
             "--output", str(self.viz_output),
             "--n_images", str(self.args.viz_images),
             "--point_size", str(self.args.point_size),
@@ -166,6 +288,14 @@ class PipelineRunner:
         end_time = datetime.now()
         duration = end_time - self.start_time
         
+        # Convert args to JSON-serializable format
+        args_dict = {}
+        for key, value in vars(self.args).items():
+            if isinstance(value, Path):
+                args_dict[key] = str(value)
+            else:
+                args_dict[key] = value
+        
         summary = {
             "pipeline_run": {
                 "timestamp": self.timestamp,
@@ -176,15 +306,16 @@ class PipelineRunner:
             },
             "inputs": {
                 "images_directory": str(self.images_dir),
-                "model_file": str(self.args.model)
+                "model_file": str(self.args.model) if self.args.model else None
             },
             "outputs": {
                 "masks_directory": str(self.masks_dir),
                 "colmap_model": str(self.colmap_output),
                 "filtered_model": str(self.filtered_output),
+                "ray_enhanced_model": str(self.ray_output),
                 "visualization": str(self.viz_output)
             },
-            "parameters": vars(self.args)
+            "parameters": args_dict
         }
         
         summary_path = self.base_dir / "outputs" / f"pipeline_summary_{self.timestamp}.json"
@@ -195,12 +326,16 @@ class PipelineRunner:
         print(f"⏱️  Duration: {duration}")
         print(f"📁 COLMAP Model: {self.colmap_output}")
         print(f"🔍 Filtered Model: {self.filtered_output}")
+        print(f"🌟 Ray Enhanced: {self.ray_output}")
         print(f"📊 Visualization: {self.viz_output}")
         print(f"📄 Summary: {summary_path}")
 
     def run(self):
         """Execute the complete pipeline"""
         try:
+            # Check dependencies before starting
+            self.check_dependencies()
+            
             if not self.args.skip_segmentation:
                 self.step1_segmentation()
             
@@ -210,8 +345,11 @@ class PipelineRunner:
             if not self.args.skip_filtering:
                 self.step3_filtering()
             
+            if not self.args.skip_rays:
+                self.step4_ray_enhancement()
+            
             if not self.args.skip_visualization:
-                self.step4_visualization()
+                self.step5_visualization()
             
             self.save_pipeline_summary()
             print(f"\n🎉 Pipeline completed successfully in {datetime.now() - self.start_time}!")
@@ -230,11 +368,22 @@ def parse_args():
         description="Complete Botanical Tree Reconstruction Pipeline",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""Examples:
-    # Basic usage
+    # Basic usage (full pipeline with ray enhancement)
     python main_pipeline.py --images data/raw --model models/model.pth
     
-    # Skip certain steps
-    python main_pipeline.py --images data/raw --model models/model.pth --skip-segmentation
+    # Skip segmentation (uses existing masks in data/segmentation_masks/)
+    python main_pipeline.py --images data/raw --skip-segmentation
+    
+    # Skip COLMAP (uses existing model in models/colmap_reconstruction/ or specify custom path)
+    python main_pipeline.py --images data/raw --model models/model.pth --skip-colmap
+    python main_pipeline.py --images data/raw --model models/model.pth --colmap-model path/to/custom/model --skip-colmap
+    
+    # Skip filtering (uses existing filtered model in models/colmap_filtered/ or specify custom path)
+    python main_pipeline.py --images data/raw --skip-filtering
+    python main_pipeline.py --images data/raw --filtered-model path/to/custom/filtered --skip-filtering
+    
+    # Skip ray enhancement (faster, but less dense point cloud)
+    python main_pipeline.py --images data/raw --model models/model.pth --skip-rays
     
     # High quality processing
     python main_pipeline.py --images data/raw --model models/model.pth --max-features 50000 --mask-type both
@@ -243,7 +392,11 @@ def parse_args():
     
     # Input options
     parser.add_argument("--images", type=Path, required=True, help="Directory containing input images")
-    parser.add_argument("--model", type=Path, required=True, help="Path to segmentation model (.pth file)")
+    parser.add_argument("--model", type=Path, help="Path to segmentation model (.pth file)")
+    
+    # Existing model paths (for skipping steps)
+    parser.add_argument("--colmap-model", type=Path, help="Path to existing COLMAP model directory (when --skip-colmap)")
+    parser.add_argument("--filtered-model", type=Path, help="Path to existing filtered model directory (when --skip-filtering)")
     
     # Processing options
     parser.add_argument("--mask-type", choices=["rough", "fine", "both"], default="both",
@@ -260,7 +413,7 @@ def parse_args():
     # Output options
     parser.add_argument("--viz-images", type=int, default=3,
                        help="Number of images for visualization")
-    parser.add_argument("--point-size", type=float, default=2.0,
+    parser.add_argument("--point-size", type=float, default=1.0,
                        help="Point size for visualization")
     parser.add_argument("--filter-examples", type=int, default=5,
                        help="Number of filtering examples to save")
@@ -272,6 +425,8 @@ def parse_args():
                        help="Skip COLMAP reconstruction")
     parser.add_argument("--skip-filtering", action="store_true",
                        help="Skip point cloud filtering")
+    parser.add_argument("--skip-rays", action="store_true",
+                       help="Skip ray enhancement step")
     parser.add_argument("--skip-visualization", action="store_true",
                        help="Skip final visualization")
     
@@ -287,7 +442,7 @@ def main():
     args = parse_args()
     
     # Validate inputs
-    if not args.model.exists():
+    if args.model and not args.model.exists():
         print(f"❌ Model file not found: {args.model}")
         sys.exit(1)
     

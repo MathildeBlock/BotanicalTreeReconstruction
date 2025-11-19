@@ -40,7 +40,11 @@ def project_points(points_3d, camera, image):
         return np.array([])
     
     # Get camera parameters
-    if camera.model == 'SIMPLE_PINHOLE':
+    if camera.model == 'SIMPLE_RADIAL':
+        fx = fy = camera.params[0]
+        cx, cy = camera.params[1], camera.params[2]
+        # k = camera.params[3]  # Radial distortion parameter (not used in simple projection)
+    elif camera.model == 'SIMPLE_PINHOLE':
         fx = fy = camera.params[0]
         cx, cy = camera.params[1], camera.params[2]
     elif camera.model == 'PINHOLE':
@@ -48,6 +52,7 @@ def project_points(points_3d, camera, image):
         cx, cy = camera.params[2], camera.params[3]
     else:
         print(f"Warning: Unsupported camera model {camera.model}")
+        print("Expected SIMPLE_RADIAL camera model")
         fx = fy = 1000  # Default values
         cx, cy = camera.width / 2, camera.height / 2
     
@@ -111,14 +116,35 @@ def find_mask_file(masks_dir, image_name, mask_type):
     
     # Handle different mask types
     if mask_type == 'both':
-        # Try to find either rough or fine masks, prioritizing fine
-        for mtype in ['fine', 'rough']:
-            mask_suffix = f"_{mtype}.png"
-            mask_name = base_name + mask_suffix
-            mask_path = masks_path / mask_name
-            if mask_path.exists():
-                return mask_path, mtype
-        return None, None
+        # Try to find and combine both rough and fine masks using the same logic as filtering
+        rough_suffix = "_rough.png"
+        fine_suffix = "_fine.png"
+        rough_name = base_name + rough_suffix
+        fine_name = base_name + fine_suffix
+        rough_path = masks_path / rough_name
+        fine_path = masks_path / fine_name
+        
+        # Check if both masks exist
+        if rough_path.exists() and fine_path.exists():
+            # Load both masks
+            rough_mask = cv2.imread(str(rough_path), cv2.IMREAD_GRAYSCALE)
+            fine_mask = cv2.imread(str(fine_path), cv2.IMREAD_GRAYSCALE)
+            
+            # Create combined mask using the same logic as filtering: (rough_mask > threshold) | (fine_mask > threshold)
+            threshold = 10  # Default threshold used in filtering
+            combined_mask = ((rough_mask > threshold) | (fine_mask > threshold)).astype(np.uint8) * 255
+            
+            # Save temporary combined mask
+            combined_path = masks_path / f"{base_name}_combined.png"
+            cv2.imwrite(str(combined_path), combined_mask)
+            
+            return combined_path, "combined (rough | fine)"
+        elif rough_path.exists():
+            return rough_path, "rough"
+        elif fine_path.exists():
+            return fine_path, "fine"
+        else:
+            return None, None
     else:
         # Look for specific mask type
         mask_suffix = f"_{mask_type}.png"

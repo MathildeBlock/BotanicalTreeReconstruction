@@ -2,8 +2,8 @@
 #BSUB -J botanical_pipeline
 #BSUB -q gpua100
 #BSUB -W 04:00
-#BSUB -R "rusage[mem=16GB]"
-#BSUB -n 2
+#BSUB -R "rusage[mem=8GB]"
+#BSUB -n 4
 #BSUB -R "span[hosts=1]"
 #BSUB -gpu "num=1:mode=exclusive_process"
 #BSUB -o %J.out
@@ -16,7 +16,8 @@
 module load colmap/3.8-cuda-11.8-avx512
 
 # Activate conda environment if needed
-# conda activate your_env_name
+source /work3/s204201/miniconda3/etc/profile.d/conda.sh
+conda activate colmap_env
 
 # Project paths
 PROJECT_DIR="/work3/s204201/BotanicalTreeReconstruction"

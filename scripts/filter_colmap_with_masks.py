@@ -88,8 +88,8 @@ Examples:
     # Optional arguments
     parser.add_argument('--output', 
                        help='Output directory for filtered model (default: auto-generated in colmap dir)')
-    parser.add_argument('--threshold', type=int, default=10,
-                       help='Mask threshold value (default: 10)')
+    parser.add_argument('--threshold', type=int, default=3,
+                       help='Mask threshold value (default: 3)')
     parser.add_argument('--combine', choices=['or', 'and'], default='or',
                        help='How to combine masks: "or" (union) or "and" (intersection) (default: or)')
     parser.add_argument('--examples', type=int, default=1,
