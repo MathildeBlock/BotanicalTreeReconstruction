@@ -321,10 +321,10 @@ def main():
                 print(f"  Saved: {mask_path}")
             
         except Exception as e:
-            print(f"  Error processing {img_path.name}: {e}")
+            print(f"Error processing {img_path.name}: {e}")
             continue
     
-    print(f"\n✅ Completed processing {len(image_files)} images!")
+    print(f"\nCompleted processing {len(image_files)} images!")
     return 0
 
 

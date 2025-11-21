@@ -58,18 +58,18 @@ class PipelineRunner:
         self.ray_output.mkdir(parents=True, exist_ok=True)
         self.viz_output.parent.mkdir(parents=True, exist_ok=True)
         
-        print(f"🚀 Starting Botanical Tree Reconstruction Pipeline - {self.timestamp}")
-        print(f"📁 Input images: {self.images_dir}")
+        print(f"Starting Botanical Tree Reconstruction Pipeline - {self.timestamp}")
+        print(f"Input images: {self.images_dir}")
         if args.model:
-            print(f"🎯 Model: {args.model}")
-        print(f"📊 COLMAP output: {self.colmap_output}")
-        print(f"📊 Filtered output: {self.filtered_output}")
-        print(f"📊 Ray enhanced: {self.ray_output}")
+            print(f"Model: {args.model}")
+        print(f"COLMAP output: {self.colmap_output}")
+        print(f"Filtered output: {self.filtered_output}")
+        print(f"Ray enhanced: {self.ray_output}")
 
     def run_command(self, cmd, description, check=True):
         """Run a command with error handling and logging"""
         print(f"\n{'='*60}")
-        print(f"🔄 {description}")
+        print(f"{description}")
         print(f"Command: {' '.join(cmd)}")
         print(f"{'='*60}")
         
@@ -79,21 +79,21 @@ class PipelineRunner:
                 print(result.stdout)
             return result
         except subprocess.CalledProcessError as e:
-            print(f"❌ Error in {description}:")
+            print(f"Error in {description}:")
             print(f"Exit code: {e.returncode}")
             if e.stdout:
                 print(f"STDOUT: {e.stdout}")
             if e.stderr:
                 print(f"STDERR: {e.stderr}")
             if self.args.continue_on_error:
-                print("⚠️  Continuing despite error due to --continue-on-error flag")
+                print("Continuing despite error due to --continue-on-error flag")
                 return e
             else:
                 raise
 
     def step1_segmentation(self):
         """Generate segmentation masks"""
-        print(f"\n🎯 STEP 1: Generating Segmentation Masks")
+        print(f"\nSTEP 1: Generating Segmentation Masks")
         
         cmd = [
             "python", "segmentation_inference.py",
@@ -109,11 +109,11 @@ class PipelineRunner:
         # Count generated masks
         rough_masks = len(list(self.masks_dir.glob("*_rough.png")))
         fine_masks = len(list(self.masks_dir.glob("*_fine.png")))
-        print(f"✅ Generated {rough_masks} rough masks and {fine_masks} fine masks")
+        print(f"Generated {rough_masks} rough masks and {fine_masks} fine masks")
 
     def step2_colmap(self):
         """Create COLMAP 3D reconstruction"""
-        print(f"\n📐 STEP 2: COLMAP 3D Reconstruction")
+        print(f"\nSTEP 2: COLMAP 3D Reconstruction")
         
         cmd = [
             "python", "colmap_reconstruction.py",
@@ -128,13 +128,13 @@ class PipelineRunner:
         # Check if sparse model was created
         sparse_dir = self.colmap_output / "sparse" / "0"
         if sparse_dir.exists():
-            print(f"✅ COLMAP model created at {sparse_dir}")
+            print(f"COLMAP model created at {sparse_dir}")
         else:
             raise FileNotFoundError(f"COLMAP sparse model not found at {sparse_dir}")
 
     def check_dependencies(self):
         """Check if required dependencies exist for enabled steps"""
-        print(f"🔍 Checking pipeline dependencies...")
+        print(f"Checking pipeline dependencies...")
         
         missing_deps = []
         
@@ -183,23 +183,23 @@ class PipelineRunner:
                     missing_deps.append("  -> Either run COLMAP (remove --skip-colmap) or specify --colmap-model")
         
         if missing_deps:
-            print(f"\n❌ Missing dependencies:")
+            print(f"\nMissing dependencies:")
             for dep in missing_deps:
                 if dep.startswith("  ->"):
                     print(f"    {dep}")
                 else:
                     print(f"  • {dep}")
-            print(f"\n💡 Suggestions:")
+            print(f"\nSuggestions:")
             print(f"  • Run without skip flags to generate missing files")
             print(f"  • Or provide existing files in the expected locations")
             print(f"  • Use --help to see all available options")
             sys.exit(1)
         
-        print(f"✅ All dependencies satisfied")
+        print(f"All dependencies satisfied")
 
     def step3_filtering(self):
         """Filter point cloud with segmentation masks"""
-        print(f"\n🔍 STEP 3: Point Cloud Filtering")
+        print(f"\nSTEP 3: Point Cloud Filtering")
         
         # Determine which COLMAP model to use
         if self.colmap_input:
@@ -225,11 +225,11 @@ class PipelineRunner:
         ]
         
         self.run_command(cmd, "Point cloud filtering with masks")
-        print(f"✅ Filtered model saved to {self.filtered_output}")
+        print(f"Filtered model saved to {self.filtered_output}")
 
     def step4_ray_enhancement(self):
         """Add points using ray densification"""
-        print(f"\n🌟 STEP 4: Ray Enhancement")
+        print(f"\nSTEP 4: Ray Enhancement")
         
         cmd = [
             "python", "ray_based_enhancement.py",
@@ -239,17 +239,19 @@ class PipelineRunner:
             "--fine_mask_dir", str(self.masks_dir),
             "--output_dir", str(self.ray_output.parent),
             "--output-folder-name", self.ray_output.name,
-            "--mask_thresh", "10",
-            "--samples_per_image", "1000",
-            "--depth_samples", "50"
+            "--mask_thresh", str(self.args.ray_mask_thresh),
+            "--samples_per_image", str(self.args.ray_samples_per_image),
+            "--depth_samples", str(self.args.ray_depth_samples),
+            "--voxel_size", str(self.args.ray_voxel_size),
+            "--min_image_support", str(self.args.ray_min_support)
         ]
         
         self.run_command(cmd, "Ray-based point densification")
-        print(f"✅ Ray-enhanced model saved to {self.ray_output}")
+        print(f"Ray-enhanced model saved to {self.ray_output}")
 
     def step5_visualization(self):
         """Create comprehensive pipeline visualization"""
-        print(f"\n📊 STEP 5: Pipeline Visualization")
+        print(f"\nSTEP 5: Pipeline Visualization")
         
         # Determine which original COLMAP model to use for visualization
         if self.colmap_input:
@@ -276,7 +278,7 @@ class PipelineRunner:
         ]
         
         self.run_command(cmd, "Pipeline visualization")
-        print(f"✅ Visualization saved to {self.viz_output}")
+        print(f"Visualization saved to {self.viz_output}")
 
     def cleanup(self):
         """Clean up temporary files"""
@@ -322,13 +324,13 @@ class PipelineRunner:
         with open(summary_path, 'w') as f:
             json.dump(summary, f, indent=2)
         
-        print(f"\n📋 Pipeline Summary:")
-        print(f"⏱️  Duration: {duration}")
-        print(f"📁 COLMAP Model: {self.colmap_output}")
-        print(f"🔍 Filtered Model: {self.filtered_output}")
-        print(f"🌟 Ray Enhanced: {self.ray_output}")
-        print(f"📊 Visualization: {self.viz_output}")
-        print(f"📄 Summary: {summary_path}")
+        print(f"\nPipeline Summary:")
+        print(f"⏱Duration: {duration}")
+        print(f"COLMAP Model: {self.colmap_output}")
+        print(f"Filtered Model: {self.filtered_output}")
+        print(f"Ray Enhanced: {self.ray_output}")
+        print(f"Visualization: {self.viz_output}")
+        print(f"Summary: {summary_path}")
 
     def run(self):
         """Execute the complete pipeline"""
@@ -352,10 +354,10 @@ class PipelineRunner:
                 self.step5_visualization()
             
             self.save_pipeline_summary()
-            print(f"\n🎉 Pipeline completed successfully in {datetime.now() - self.start_time}!")
+            print(f"\nPipeline completed successfully in {datetime.now() - self.start_time}!")
             
         except Exception as e:
-            print(f"\n❌ Pipeline failed: {e}")
+            print(f"\nPipeline failed: {e}")
             if self.args.debug:
                 import traceback
                 traceback.print_exc()
@@ -387,6 +389,12 @@ def parse_args():
     
     # High quality processing
     python main_pipeline.py --images data/raw --model models/model.pth --max-features 50000 --mask-type both
+    
+    # Custom ray enhancement settings (faster processing)
+    python main_pipeline.py --images data/raw --model models/model.pth --ray-samples-per-image 500 --ray-depth-samples 25
+    
+    # High density ray enhancement
+    python main_pipeline.py --images data/raw --model models/model.pth --ray-samples-per-image 3000 --ray-depth-samples 100
         """
     )
     
@@ -418,6 +426,18 @@ def parse_args():
     parser.add_argument("--filter-examples", type=int, default=5,
                        help="Number of filtering examples to save")
     
+    # Ray enhancement options
+    parser.add_argument("--ray-mask-thresh", type=int, default=3,
+                       help="Mask threshold for ray enhancement (default: 3)")
+    parser.add_argument("--ray-samples-per-image", type=int, default=2000,
+                       help="Sampled mask pixels per image for ray enhancement (default: 2000)")
+    parser.add_argument("--ray-depth-samples", type=int, default=400,
+                       help="Depth samples per ray for ray enhancement (default: 400)")
+    parser.add_argument("--ray-voxel-size", type=float, default=0.03,
+                       help="Voxel size in meters for ray enhancement (default: 0.03)")
+    parser.add_argument("--ray-min-support", type=int, default=80,
+                       help="Minimum images supporting a voxel for ray enhancement (default: 80)")
+    
     # Pipeline control
     parser.add_argument("--skip-segmentation", action="store_true",
                        help="Skip segmentation step (use existing masks)")
@@ -443,11 +463,11 @@ def main():
     
     # Validate inputs
     if args.model and not args.model.exists():
-        print(f"❌ Model file not found: {args.model}")
+        print(f"Model file not found: {args.model}")
         sys.exit(1)
     
     if not args.images.exists():
-        print(f"❌ Images directory not found: {args.images}")
+        print(f"Images directory not found: {args.images}")
         sys.exit(1)
     
     # Run pipeline

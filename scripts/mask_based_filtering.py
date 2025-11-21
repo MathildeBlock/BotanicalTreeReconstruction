@@ -125,7 +125,7 @@ Examples:
         sys.exit(1)
     
     # Print configuration
-    print("🔧 Configuration:")
+    print("Configuration:")
     print(f"  COLMAP model: {args.colmap}")
     print(f"  Images: {args.images}")
     print(f"  Rough masks: {args.rough_mask}")
@@ -137,12 +137,12 @@ Examples:
     print(f"  Visibility threshold: {args.visibility_threshold:.1%}")
     
     # Load model
-    print(f"\n📂 Loading COLMAP model...")
+    print(f"\nLoading COLMAP model...")
     try:
         cameras, images, points3D = read_model(args.colmap, ext=f".{args.format}")
-        print(f"✅ Loaded: {len(cameras)} cameras, {len(images)} images, {len(points3D)} points")
+        print(f"Loaded: {len(cameras)} cameras, {len(images)} images, {len(points3D)} points")
     except Exception as e:
-        print(f"❌ Error loading model: {e}")
+        print(f"Error loading model: {e}")
         sys.exit(1)
     
     # Track point visibility across images
@@ -165,7 +165,7 @@ Examples:
     processed_images = 0
     skipped_images = 0
     
-    print(f"\n🔄 First pass: Analyzing point visibility across {len(images)} images...")
+    print(f"\nFirst pass: Analyzing point visibility across {len(images)} images...")
     
     # First pass: count visibility for each point
     for img_obj in images.values():
@@ -174,7 +174,7 @@ Examples:
         # Check if image file exists and can be loaded
         img = cv2.imread(img_path)
         if img is None:
-            print(f"⚠️  Warning: Could not load image {img_path}, skipping...")
+            print(f"Warning: Could not load image {img_path}, skipping...")
             skipped_images += 1
             continue
         
@@ -189,7 +189,7 @@ Examples:
         
         # Check if masks were loaded successfully
         if rough_mask is None or fine_mask is None:
-            print(f"⚠️  Warning: Could not load masks for {img_obj.name}, skipping...")
+            print(f"Warning: Could not load masks for {img_obj.name}, skipping...")
             skipped_images += 1
             continue
         
@@ -230,7 +230,7 @@ Examples:
         if processed_images % 50 == 0:
             print(f"  Processed {processed_images}/{len(images)} images...")
     
-    print(f"\n🔄 Second pass: Filtering points based on {args.visibility_threshold:.1%} visibility threshold...")
+    print(f"\nSecond pass: Filtering points based on {args.visibility_threshold:.1%} visibility threshold...")
     
     # Determine which points to keep based on visibility threshold
     kept_point_ids = set()
@@ -290,13 +290,13 @@ Examples:
     points3D_filtered = {pid: pt for pid, pt in points3D.items() if pid in kept_point_ids}
     
     # Save updated model
-    print(f"\n💾 Saving filtered model...")
+    print(f"\nSaving filtered model...")
     write_model(cameras, images, points3D_filtered, output_model_dir, ext=f".{args.format}")
     
     # Config saving removed - using direct parameter passing instead
     
     # Print summary
-    print(f"\n📊 SUMMARY:")
+    print(f"\nSUMMARY:")
     print(f"  Original 3D points: {len(points3D):,}")
     print(f"  Filtered 3D points: {len(points3D_filtered):,}")
     print(f"  Points removed: {len(points3D) - len(points3D_filtered):,} ({((len(points3D) - len(points3D_filtered)) / len(points3D) * 100):.1f}%)")

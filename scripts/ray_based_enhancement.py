@@ -38,12 +38,12 @@ def parse_args():
     p.add_argument("--mask_thresh", type=int, default=3, help="Mask threshold used for combining rough/fine masks")
 
     p.add_argument("--samples_per_image", type=int, default=2000, help="Sampled mask pixels per image")
-    p.add_argument("--depth_samples", type=int, default=500, help="Depth samples per ray")
+    p.add_argument("--depth_samples", type=int, default=400, help="Depth samples per ray")
     p.add_argument("--depth_min", type=float, default=1.0, help="Minimum depth (m)")
     p.add_argument("--depth_max", type=float, default=7.0, help="Maximum depth (m)")
 
-    p.add_argument("--voxel_size", type=float, default=0.02, help="Voxel size in meters")
-    p.add_argument("--min_image_support", type=int, default=20, help="Minimum DISTINCT images supporting a voxel")
+    p.add_argument("--voxel_size", type=float, default=0.03, help="Voxel size in meters")
+    p.add_argument("--min_image_support", type=int, default=80, help="Minimum DISTINCT images supporting a voxel")
     p.add_argument("--merge_eps_mult", type=float, default=1.5,
                    help="Multiplier for MERGE_EPS relative to VOXEL_SIZE; MERGE_EPS = voxel_size*merge_eps_mult")
 
@@ -55,7 +55,7 @@ def parse_args():
                    help="Number of worker processes for sampling")
     p.add_argument("--seed", type=int, default=42, help="Random seed")
 
-    p.add_argument("--chunk_size", type=float, default=1.5,
+    p.add_argument("--chunk_size", type=float, default=4,
                    help="Spatial chunk size in meters for processing (smaller = less memory, more runtime)")
 
     p.add_argument("--output_dir", type=str, required=True,

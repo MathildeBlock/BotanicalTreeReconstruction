@@ -28,7 +28,7 @@ def parse_args():
     parser.add_argument('--ray_model', type=str, help='Path to ray-enhanced COLMAP model directory')
     parser.add_argument('--output', type=str, required=True, help='Output image path')
     parser.add_argument('--n_images', type=int, default=3, help='Number of images to sample for visualization')
-    parser.add_argument('--point_size', type=float, default=1.0, help='Size of projected points')
+    parser.add_argument('--point-size', type=float, default=1.0, help='Size of projected points', dest='point_size')
     parser.add_argument('--mask_type', type=str, choices=['rough', 'fine', 'both'], default='both', 
                        help='Type of masks to use - should match what was used in filtering (rough, fine, or both)')
     
@@ -43,18 +43,21 @@ def project_points(points_3d, camera, image):
     if camera.model == 'SIMPLE_RADIAL':
         fx = fy = camera.params[0]
         cx, cy = camera.params[1], camera.params[2]
-        # k = camera.params[3]  # Radial distortion parameter (not used in simple projection)
+        k1 = camera.params[3]  # Radial distortion parameter
     elif camera.model == 'SIMPLE_PINHOLE':
         fx = fy = camera.params[0]
         cx, cy = camera.params[1], camera.params[2]
+        k1 = 0.0  # No distortion
     elif camera.model == 'PINHOLE':
         fx, fy = camera.params[0], camera.params[1]
         cx, cy = camera.params[2], camera.params[3]
+        k1 = 0.0  # No distortion
     else:
         print(f"Warning: Unsupported camera model {camera.model}")
         print("Expected SIMPLE_RADIAL camera model")
         fx = fy = 1000  # Default values
         cx, cy = camera.width / 2, camera.height / 2
+        k1 = 0.0  # No distortion
     
     # Get rotation and translation
     qvec = image.qvec
@@ -78,10 +81,21 @@ def project_points(points_3d, camera, image):
     if len(points_cam) == 0:
         return np.array([])
     
-    # Project to image plane
+    # Project to normalized image coordinates
+    x_norm = points_cam[:, 0] / points_cam[:, 2]
+    y_norm = points_cam[:, 1] / points_cam[:, 2]
+    
+    # Apply radial distortion (SIMPLE_RADIAL model)
+    if abs(k1) > 1e-10:  # Only apply if distortion is significant
+        r_sq = x_norm**2 + y_norm**2
+        distortion_factor = 1.0 + k1 * r_sq
+        x_norm *= distortion_factor
+        y_norm *= distortion_factor
+    
+    # Convert to pixel coordinates
     points_2d = np.zeros((len(points_cam), 2))
-    points_2d[:, 0] = fx * points_cam[:, 0] / points_cam[:, 2] + cx
-    points_2d[:, 1] = fy * points_cam[:, 1] / points_cam[:, 2] + cy
+    points_2d[:, 0] = fx * x_norm + cx
+    points_2d[:, 1] = fy * y_norm + cy
     
     # Filter points within image bounds
     valid_x = (points_2d[:, 0] >= 0) & (points_2d[:, 0] < camera.width)
@@ -131,7 +145,7 @@ def find_mask_file(masks_dir, image_name, mask_type):
             fine_mask = cv2.imread(str(fine_path), cv2.IMREAD_GRAYSCALE)
             
             # Create combined mask using the same logic as filtering: (rough_mask > threshold) | (fine_mask > threshold)
-            threshold = 10  # Default threshold used in filtering
+            threshold = 3  # Default threshold used in filtering
             combined_mask = ((rough_mask > threshold) | (fine_mask > threshold)).astype(np.uint8) * 255
             
             # Save temporary combined mask
