@@ -1,156 +1,50 @@
 # 🌳 Botanical Tree Reconstruction
 
-A Python toolkit for 3D tree reconstruction from aerial imagery using COLMAP structure-from-motion and deep learning segmentation.
+A Python toolkit for 3D tree reconstruction from aerial imagery using COLMAP structure-from-motion, deep learning segmentation, and ray-based point densification.
 
-## 🐆 Quick Start Guide
+## 🐆 Quick Start (Recommended)
 
-### 1. Installation and Setup
-
-**Clone repository:**
+### 1. Setup
 ```bash
-git clone https://github.com/MathildeBlock/BotanicalTreeReconstruction.git
-```
-
-**Install Python dependencies:**
-```bash
-cd BotanicalTreeReconstruction
+# Install dependencies
 pip install -r requirements.txt
-```
 
-**Load COLMAP module (on HPC systems):**
-```bash
+# Load COLMAP (on HPC systems)
 module load colmap/3.8-cuda-11.8-avx512
 ```
 
-**Verify COLMAP is available:**
-```bash
-colmap --help
-```
-
-### 2. Complete Pipeline (Recommended)
-
-**Run the entire pipeline with one command:**
-
+### 2. Run Complete Pipeline
 ```bash
 cd scripts
-# Basic usage
-python main_pipeline.py --images ../data/raw --model ../models/model.pth
+
+# Basic usage (full 5-step pipeline)
+python run_pipeline.py --images ../data/raw --model ../models/model.pth
 
 # High quality processing
-python main_pipeline.py --images ../data/raw --model ../models/model.pth \
+python run_pipeline.py --images ../data/raw --model ../models/model.pth \
     --max-features 50000 --mask-type both --visibility-threshold 0.8
-
-# Skip certain steps (if already completed)
-python main_pipeline.py --images ../data/raw --model ../models/model.pth \
-    --skip-segmentation --skip-colmap
 ```
 
-**Key Arguments:**
-- `--images`: Input images directory (required)
-- `--model`: Path to segmentation model (.pth file)  
-- `--mask-type`: rough, fine, or both (default: both)
-- `--max-features`: COLMAP feature count (default: 20000)
-- `--visibility-threshold`: Point filtering threshold (default: 0.7)
-- `--skip-*`: Skip individual pipeline steps
-- `--continue-on-error`: Continue even if a step fails
-
-The main pipeline automatically:
-1. 🎯 Generates segmentation masks
-2. 📐 Creates COLMAP 3D reconstruction  
-3. 🔍 Filters points using masks
-4. 📊 Creates comprehensive visualization
-5. 📋 Saves configuration and summary
-
-### 3. Individual Step Commands
-
-For more control, you can run individual pipeline steps:
-
-### Command-Line Interface
-
-All scripts support `--help` to show available options:
-
+### 3. HPC Batch Execution
 ```bash
-cd /work3/s204201/BotanicalTreeReconstruction/scripts
-python script_name.py --help
+# Submit complete pipeline to cluster
+bsub < run_pipeline.sh
 ```
 
-#### 1. Generate Segmentation Masks
-```bash
-# Generate both rough and fine masks
-python segmentation_inference.py \
-    --model /path/to/trained_model.pth \
-    --input ../data/raw \
-    --output ../data/segmentation_masks \
-    --mask-type both
-```
+## 📊 Pipeline Overview
 
-#### 2. Create COLMAP 3D Model
-```bash
-# Basic reconstruction
-python colmap_pipeline.py ../data/raw
+The complete pipeline consists of 5 automated steps:
 
-# With custom settings
-python colmap_pipeline.py ../data/raw \
-    --output ../models/my_reconstruction \
-    --max-features 30000 \
-    --log-level INFO
-```
+1. **🎯 Segmentation** - Generate tree masks using DeepLabV3
+2. **🏗️ COLMAP Reconstruction** - Create initial 3D point cloud from images
+3. **🔍 Point Filtering** - Remove non-tree points using mask visibility  
+4. **✨ Ray Enhancement** - Add more points to sparse model via ray casting
+5. **📊 Visualization** - Create comprehensive comparison plots
 
-#### 3. Filter Points with Segmentation Masks
-```bash
-# Using both rough and fine masks with 70% visibility threshold
-python filter_colmap_with_masks.py \
-    --colmap ../models/colmap_output/sparse/0 \
-    --images ../data/raw \
-    --rough-mask ../data/segmentation_masks \
-    --fine-mask ../data/segmentation_masks \
-    --visibility-threshold 0.7 \
-    --combine or \
-    --output ../models/filtered_model
+**Input**: Raw aerial images + pre-trained segmentation model  
+**Output**: Enhanced sparse 3D point cloud + visualization + processing summary
 
-# More conservative filtering (80% threshold)
-python filter_colmap_with_masks.py \
-    --colmap ../models/colmap_output/sparse/0 \
-    --images ../data/raw \
-    --rough-mask ../data/segmentation_masks \
-    --fine-mask ../data/segmentation_masks \
-    --visibility-threshold 0.8 \
-    --combine and
-```
-
-### Complete Example Workflow
-```bash
-cd /work3/s204201/BotanicalTreeReconstruction
-
-# 1. Add your aerial images
-cp /path/to/your/drone/images/* data/raw/
-
-# 2. Generate segmentation masks (both types)
-cd scripts
-python segmentation_inference.py \
-    --model /path/to/deeplabv3_model.pth \
-    --input ../data/raw \
-    --output ../data/segmentation_masks \
-    --mask-type both
-
-# 3. Create initial COLMAP reconstruction  
-python colmap_pipeline.py ../data/raw \
-    --output ../models/initial_reconstruction \
-    --max-features 25000
-
-# 4. Filter using vegetation masks
-python filter_colmap_with_masks.py \
-    --colmap ../models/initial_reconstruction/sparse/0 \
-    --images ../data/raw \
-    --rough-mask ../data/segmentation_masks \
-    --fine-mask ../data/segmentation_masks \
-    --visibility-threshold 0.7 \
-    --output ../models/filtered_tree_model
-
-# 5. Results are in models/filtered_tree_model/
-```
-
-## Project Structure
+## 🗂️ Project Structure
 
 ```
 BotanicalTreeReconstruction/
@@ -158,131 +52,333 @@ BotanicalTreeReconstruction/
 ├── requirements.txt       # Python dependencies
 ├── .gitignore            # Git ignore patterns
 ├── .gitattributes        # Git LFS configuration
-├── data/                 # Input datasets (images, manual segmentations, etc.)
-├── models/               # Pre-trained segmentation models
+├── data/                 # Datasets (raw images, segmentation_mask)
+├── models/               # Pre-trained segmentation model, Colmap models
+├── outputs/              # Generated visualizations and summaries
 └── scripts/              # All processing scripts
-    ├── colmap_pipeline.py              # COLMAP reconstruction pipeline
-    ├── segmentation_inference.py       # Tree segmentation with DeepLabV3
-    ├── filter_colmap_with_masks.py     # Point cloud filtering using masks
-    ├── add_points_with_rays.py         # Ray-based point addition
-    ├── pipeline_visualization.py       # Comprehensive pipeline visualization
-    ├── main_pipeline.py               # Complete automation script
-    ├── run_pipeline.sh                # HPC batch script
-    ├── run_pipeline_configs.sh        # HPC configuration helper
-    └── read_write_model.py            # COLMAP model I/O utilities
+    ├── run_pipeline.py               # 🎯 Complete automation script
+    ├── run_pipeline.sh               # 🚀 HPC batch script
+    ├── segmentation_inference.py     # 🎭 Tree segmentation with DeepLabV3
+    ├── colmap_reconstruction.py       # 🏗️ COLMAP reconstruction
+    ├── mask_based_filtering.py       # 🔍 Point cloud filtering
+    ├── ray_based_enhancement.py      # ✨ Ray-based point enhancement
+    ├── visualize_results.py          # 📊 Comprehensive visualization
+    ├── read_write_model.py           # 🛠️ COLMAP model I/O utilities
+    └── logs/                         # HPC job output logs
 ```
 
-## 🛠️ Prerequisites
+## 🎯 Main Pipeline Script
 
-- Python 3.7+
-- COLMAP installed and available in PATH
-- CUDA-capable GPU (recommended)
-- PyTorch and torchvision (for segmentation)
+**`run_pipeline.py`** - Complete automation script that orchestrates all pipeline steps.
 
-## 📖 Available Scripts
+### Key Arguments:
+- `--images DIR` - Input images directory (required)
+- `--model FILE` - Path to segmentation model (.pth file)
+- `--mask-type {rough,fine,both}` - Type of masks to generate (default: both)
+- `--max-features INT` - Maximum features for COLMAP (default: 20000)  
+- `--visibility-threshold FLOAT` - Point filtering threshold 0.0-1.0 (default: 0.7)
+- `--combine-masks {or,and}` - How to combine rough/fine masks (default: or)
+
+### Skip Options:
+- `--skip-segmentation` - Use existing masks in data/segmentation_masks/
+- `--skip-colmap` - Use existing model in models/colmap_reconstruction/
+- `--skip-filtering` - Use existing filtered model in models/colmap_filtered/
+- `--skip-rays` - Skip ray enhancement (faster, less dense)
+- `--skip-visualization` - Skip final visualization
+
+### Advanced Options:
+- `--colmap-model DIR` - Path to existing COLMAP model (when skipping COLMAP)
+- `--filtered-model DIR` - Path to existing filtered model (when skipping filtering)
+- `--continue-on-error` - Continue pipeline even if a step fails
+- `--debug` - Enable detailed error output
+
+## 🚀 HPC Batch Script
+
+**`run_pipeline.sh`** - LSF batch script for cluster execution with GPU allocation.
+
+- **Resources**: A100 GPU, 8GB RAM, 4-hour limit
+- **Environment**: Loads COLMAP module, activates conda environment
+- **Logs**: Output saved to `logs/JOBID.out` and `logs/JOBID.err`
+
+```bash
+# Submit pipeline to cluster
+bsub < run_pipeline.sh
+```
+
+## 🛠️ Individual Scripts
+
+For advanced users who need fine-grained control over individual pipeline steps.
 
 ### segmentation_inference.py
-
-Generates tree segmentation masks from aerial images using DeepLabV3.
-
-**Key Arguments:**
-- `--model`: Path to trained segmentation model (.pth file) 
-- `--input`: Directory containing input images
-- `--output`: Output directory for masks
-- `--mask-type`: `rough` (fast, full-image), `fine` (detailed, patch-based), or `both` (default: both)
-- `--tile-size`: Patch size for fine masks (default: 512)
-- `--overlap`: Overlap between patches for fine masks (default: 64)
-- `--input-size`: Input size for rough masks (default: 512)
-
-**Note:** The script automatically uses:
-- **Full-image mode** for rough masks (fast, lower resolution)
-- **Patch-based mode** for fine masks (detailed, high resolution)
-
-### colmap_pipeline.py
-
-Creates a COLMAP 3D reconstruction model from an image directory.
+Generate tree segmentation masks using trained DeepLabV3 model.
 
 **Key Arguments:**
-- `image_dir`: Path to directory containing input images (required)
-- `-o, --output`: Output directory (default: ../models/colmap_output)
-- `--max-features`: Max features per image (default: 20000)
-- `--log-level`: Logging level (DEBUG, INFO, WARNING, ERROR)
+- `--model FILE` - Path to trained segmentation model (.pth)
+- `--input DIR` - Input images directory
+- `--output DIR` - Output masks directory
+- `--mask-type {rough,fine,both}` - Type of masks to generate
+- `--device {cpu,cuda,auto}` - Processing device
+- `--patch-size INT` - Patch size for fine segmentation (default: 512)
 
-### filter_colmap_with_masks.py
+**Usage:**
+```bash
+# Generate both rough and fine masks
+python segmentation_inference.py \
+    --model ../models/model.pth \
+    --input ../data/raw \
+    --output ../data/segmentation_masks \
+    --mask-type both --device cuda
+```
 
-Filters COLMAP 3D points using segmentation masks with visibility-based thresholding.
-
-**Key Arguments:**
-- `--colmap`: Path to COLMAP model directory (required)
-- `--images`: Path to original images directory (required)
-- `--rough-mask`: Path to rough segmentation masks (required)
-- `--fine-mask`: Path to fine segmentation masks (required)
-- `--output`: Output directory for filtered model (default: auto-generated)
-- `--visibility-threshold`: Only keep points visible in ≥this fraction of images (default: 0.7)
-- `--threshold`: Mask pixel threshold value (default: 10)
-- `--combine`: Mask combination: "or" or "and" (default: or)
-- `--examples`: Number of visualization examples (default: 5)
-
-### pipeline_visualization.py
-
-Creates comprehensive visualizations showing the complete reconstruction pipeline.
+### colmap_reconstruction.py
+Create COLMAP 3D reconstruction from images.
 
 **Key Arguments:**
-- `--images`: Directory containing original images (required)
-- `--masks`: Directory containing segmentation masks (optional)
-- `--original_model`: Path to original COLMAP model directory (required)
-- `--filtered_model`: Path to filtered COLMAP model directory (required)
-- `--ray_model`: Path to ray-enhanced COLMAP model directory
-- `--output`: Output visualization image path (required)
-- `--n_images`: Number of sample images to visualize (default: 3)
-- `--point_size`: Size of projected points (default: 1.0)
-- `--mask_type`: Type of masks to use - 'rough', 'fine', or 'both' (default: 'both') - should match what was used in filtering
+- `image_dir` - Path to input images directory (required)
+- `--output DIR` - Output directory (default: ../models/colmap_output)
+- `--max-features INT` - Max features per image (default: 20000)
+- `--log-level {DEBUG,INFO,WARNING,ERROR}` - Logging level
+
+**Usage:**
+```bash
+# Basic reconstruction
+python colmap_reconstruction.py ../data/raw
+
+# High quality with 50k features
+python colmap_reconstruction.py ../data/raw \
+    --output ../models/high_quality_colmap \
+    --max-features 50000
+```
+
+### mask_based_filtering.py
+Filter COLMAP 3D points using segmentation masks with visibility-based thresholding.
+
+**Key Arguments:**
+- `--colmap DIR` - COLMAP model directory (required)
+- `--images DIR` - Original images directory (required)
+- `--rough-mask DIR` - Rough segmentation masks directory (required)
+- `--fine-mask DIR` - Fine segmentation masks directory (required)
+- `--output DIR` - Output directory for filtered model
+- `--visibility-threshold FLOAT` - Keep points visible in ≥this fraction of images (default: 0.7)
+- `--threshold INT` - Mask pixel threshold value (default: 10)
+- `--combine {or,and}` - Mask combination method (default: or)
+- `--examples INT` - Number of visualization examples to save (default: 5)
+
+**Usage:**
+```bash
+# Filter using both rough and fine masks
+python mask_based_filtering.py \
+    --colmap ../models/colmap_reconstruction/sparse/0 \
+    --images ../data/raw \
+    --rough-mask ../data/segmentation_masks \
+    --fine-mask ../data/segmentation_masks \
+    --visibility-threshold 0.7 \
+    --combine or
+```
+
+### ray_based_enhancement.py
+Enhance sparse COLMAP model by adding more points using ray-casting and voxel-based sampling.
+
+**Key Arguments:**
+- `--colmap_model_dir DIR` - Input COLMAP model directory (required)
+- `--rough_mask_dir DIR` - Directory with rough masks (required)
+- `--fine_mask_dir DIR` - Directory with fine masks (required)
+- `--output_dir DIR` - Base output directory (required)
+- `--output-folder-name NAME` - Specific folder name for output
+- `--mask_thresh INT` - Mask threshold for combining rough/fine masks (default: 10)
+- `--samples_per_image INT` - Sampled mask pixels per image (default: 1000)
+- `--depth_samples INT` - Depth samples per ray (default: 50)
+- `--voxel_size FLOAT` - Voxel size in meters (default: 0.02)
+- `--min_image_support INT` - Minimum images supporting a voxel (default: 3)
+
+**Usage:**
+```bash
+# Enhance sparse model using ray casting
+python ray_based_enhancement.py \
+    --colmap_model_dir ../models/colmap_filtered \
+    --rough_mask_dir ../data/segmentation_masks \
+    --fine_mask_dir ../data/segmentation_masks \
+    --output_dir ../models \
+    --output-folder-name colmap_ray_enhanced \
+    --samples_per_image 1000
+```
+
+### visualize_results.py
+Create comprehensive visualizations showing all pipeline stages.
+
+**Key Arguments:**
+- `--images DIR` - Original images directory (required)
+- `--original_model DIR` - Original COLMAP model directory (required)
+- `--filtered_model DIR` - Filtered COLMAP model directory (required)
+- `--ray_model DIR` - Ray-enhanced COLMAP model directory
+- `--output FILE` - Output visualization image path (required)
+- `--masks DIR` - Segmentation masks directory
+- `--n_images INT` - Number of sample images to visualize (default: 3)
+- `--point_size FLOAT` - Size of projected points (default: 1.0)
+- `--mask_type {rough,fine,both}` - Type of masks to display (default: both)
+
+**Usage:**
+```bash
+# Create 5-column visualization
+python visualize_results.py \
+    --images ../data/raw \
+    --masks ../data/segmentation_masks \
+    --original_model ../models/colmap_reconstruction/sparse/0 \
+    --filtered_model ../models/colmap_filtered \
+    --ray_model ../models/colmap_ray_enhanced \
+    --output ../outputs/pipeline_comparison.png \
+    --n_images 3
+```
 
 Creates a 5-column visualization showing:
 1. **Original Image** - Raw input images
-2. **Segmentation Mask** - Tree segmentation overlaid on images  
+2. **Segmentation Mask** - Combined tree segmentation overlaid on images  
 3. **Original COLMAP** - Points from initial reconstruction
-4. **Filtered COLMAP** - Points after mask-based filtering
-5. **Ray Enhanced** - Points after ray densification
+4. **Filtered COLMAP** - Points after mask-based filtering  
+5. **Ray Enhanced** - Enhanced sparse point cloud after ray casting
 
-**Usage Examples:**
+
+## 📊 Output Structure
+
+After running the complete pipeline, your outputs will be organized as:
+
+```
+models/
+├── colmap_reconstruction/    # Step 2 - Initial COLMAP reconstruction
+│   ├── database.db
+│   └── sparse/0/
+│       ├── cameras.bin
+│       ├── images.bin
+│       └── points3D.bin
+├── colmap_filtered/         # Step 3 - Filtered points using masks
+│   ├── cameras.bin
+│   ├── images.bin
+│   └── points3D.bin
+└── colmap_ray_enhanced/     # Step 4 - Enhanced sparse model from ray casting
+    ├── cameras.bin
+    ├── images.bin
+    └── points3D.bin
+
+outputs/
+├── pipeline_visualization.png    # Step 5 - 5-column comparison plot
+├── processing_summary.txt       # Detailed processing log
+└── point_statistics.txt         # Point counts for each stage
+
+data/
+└── segmentation_masks/          # Step 1 - Generated masks
+    ├── image1_rough.png
+    ├── image1_fine.png
+    ├── image2_rough.png
+    └── image2_fine.png
+```
+
+## 🔧 Prerequisites
+
+- **Python 3.7+** with pip
+- **COLMAP 3.8+** installed and available in PATH
+- **CUDA-capable GPU** (recommended for segmentation and COLMAP)
+- **Git LFS** for model files (`git lfs install`)
+
+### Installing COLMAP
+
+**Ubuntu/Debian:**
+```bash
+sudo apt update
+sudo apt install colmap
+```
+
+**From source or HPC systems:**
+```bash
+# Load as module (HPC)
+module load colmap/3.8-cuda-11.8-avx512
+
+# Or build from source - see COLMAP documentation
+```
+
+## 🏁 Complete Example Workflow
 
 ```bash
-# Create comprehensive pipeline visualization
-python scripts/pipeline_visualization.py \
-    --images data/images \
-    --masks data/masks \
-    --original_model data/sparse/0 \
-    --filtered_model data/sparse_filtered/0 \
-    --ray_model data/sparse_ray_enhanced/0 \
-    --output outputs/pipeline_comparison.png \
-    --n_images 3 \
-    --point_size 2.0 \
-    --mask_type both
+# 1. Clone and setup
+git clone <your-repo>
+cd BotanicalTreeReconstruction
+pip install -r requirements.txt
+
+# 2. Add your aerial images
+cp /path/to/your/drone/images/* data/raw/
+
+# 3. Run complete pipeline
+cd scripts
+python run_pipeline.py --images ../data/raw --model ../models/model.pth
+
+# 4. Check results
+ls ../models/colmap_ray_enhanced/  # Final enhanced sparse point cloud
+ls ../outputs/                     # Visualizations and summaries
 ```
 
+### For HPC Systems:
+```bash
+# Submit batch job
+bsub < run_pipeline.sh
 
+# Monitor progress
+bjobs
+tail -f logs/[JOBID].out
 
-## 📊 Output
-
-The reconstruction creates:
-```
-models/colmap_output/
-├── database.db          # COLMAP feature database
-└── sparse/              # 3D reconstruction
-    └── 0/               # Model files
-        ├── cameras.bin  # Camera parameters
-        ├── images.bin   # Image poses
-        └── points3D.bin # 3D points
+# Results in same output structure
 ```
 
-## 📝 Notes
+## 🚨 Troubleshooting
 
-- The script uses GPU acceleration by default when available
-- Processing time depends on number and resolution of images
-- Large image sets may require significant memory
-- For best results, use images with good overlap and coverage
-- Rough masks use full-image inference (fast)
-- Fine masks use patch-based inference (detailed)
-- The visibility threshold in filtering helps preserve structurally important points
+### Common Issues:
+
+**"COLMAP not found"**
+- Ensure COLMAP is installed and in PATH
+- On HPC: `module load colmap` before running
+- Test with: `colmap --help`
+
+**"CUDA out of memory"** 
+- Reduce `--max-features` (try 10000)
+- Use `--mask-type rough` only
+- Add `--device cpu` for segmentation
+
+**"Model file not found"**
+- Ensure model is tracked with Git LFS: `git lfs pull`
+- Check file size is >100MB: `ls -lh models/`
+
+**"No images found"**
+- Check image directory structure: images should be directly in specified folder
+- Supported formats: .jpg, .jpeg, .png
+- Ensure absolute paths or run from correct directory
+
+## 📚 Citations & References
+
+This pipeline combines several established techniques:
+
+- **COLMAP**: Schönberger & Frahm. "Structure-from-Motion Revisited." CVPR 2016.
+- **DeepLabV3**: Chen et al. "Rethinking Atrous Convolution for Semantic Segmentation." arXiv 2017.
+- **Ray Casting**: Custom implementation for point densification in vegetation scenes.
+
+## 📄 License
+
+[Add your license information here]
+
+---
+
+**🌟 Quick Commands Summary:**
+
+```bash
+# Complete pipeline (recommended)
+python run_pipeline.py --images ../data/raw --model ../models/model.pth
+
+# HPC batch submission  
+bsub < run_pipeline.sh
+
+# High quality processing
+python run_pipeline.py --images ../data/raw --model ../models/model.pth \
+    --max-features 50000 --visibility-threshold 0.8
+
+# Skip time-consuming steps
+python run_pipeline.py --images ../data/raw --model ../models/model.pth \
+    --skip-segmentation --skip-rays
+```
 

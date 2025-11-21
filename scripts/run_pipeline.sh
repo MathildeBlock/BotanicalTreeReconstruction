@@ -6,11 +6,11 @@
 #BSUB -n 4
 #BSUB -R "span[hosts=1]"
 #BSUB -gpu "num=1:mode=exclusive_process"
-#BSUB -o %J.out
-#BSUB -e %J.err
+#BSUB -o logs/%J.out
+#BSUB -e logs/%J.err
 #BSUB -B
-#BSUB -N
-#BSUB -u s204201@dtu.dk
+## BSUB -N
+## BSUB -u xx@dtu.dk # write email here and uncomment
 
 # Load required modules
 module load colmap/3.8-cuda-11.8-avx512
@@ -57,7 +57,7 @@ echo "=== Environment Check Complete ==="
 echo "=== Executing Main Pipeline ==="
 cd scripts
 
-python main_pipeline.py \
+python run_pipeline.py \
     --images "$IMAGES_DIR" \
     --model "$MODEL_PATH" \
     --mask-type both \

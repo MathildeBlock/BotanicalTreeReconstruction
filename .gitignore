@@ -5,6 +5,8 @@ data/segmentation_masks/*
 !data/segmentation_masks/.gitkeep
 models/*
 !models/.gitkeep
+outputs/*
+!outputs/
 *.err
 *.out
 
@@ -12,8 +14,6 @@ models/*
 *.db
 *.bin
 *.txt
-reports/
-logs/
 *.log
 
 # Python
