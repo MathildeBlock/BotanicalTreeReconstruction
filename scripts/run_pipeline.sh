@@ -2,7 +2,7 @@
 #BSUB -J botanical_pipeline
 #BSUB -q gpua100
 #BSUB -W 06:00
-#BSUB -R "rusage[mem=16GB]"
+#BSUB -R "rusage[mem=32GB]"
 #BSUB -n 4
 #BSUB -R "span[hosts=1]"
 #BSUB -gpu "num=1:mode=exclusive_process"
@@ -15,9 +15,8 @@
 # Load required modules
 module load colmap/3.8-cuda-11.8-avx512
 
-# Activate conda environment if needed
-source /work3/s204201/miniconda3/etc/profile.d/conda.sh
-conda activate colmap_env
+# Activate Python environment (assumes user created one with: python -m venv venv)
+source ~/venv/bin/activate
 
 # Project paths
 PROJECT_DIR="/work3/s204201/BotanicalTreeReconstruction"
@@ -61,13 +60,12 @@ python run_pipeline.py \
     --images "$IMAGES_DIR" \
     --model "$MODEL_PATH" \
     --mask-type both \
-    --max-features 30000 \
-    --visibility-threshold 0.7 \
+    --max-features 20000 \
+    --visibility-threshold 0.5 \
     --combine-masks or \
     --viz-images 3 \
     --filter-examples 5 \
-    --device cuda \
-    --skip-rays
+    --device cuda 
 
 PIPELINE_EXIT_CODE=$?
 

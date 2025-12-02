@@ -103,7 +103,7 @@ Examples:
     parser.add_argument('--img-ext', default='.JPG',
                        help='Image file extension to replace (default: .JPG)')
     parser.add_argument('--visibility-threshold', type=float, default=0.5,
-                       help='Only delete points visible in less than this fraction of images (default: 0.7 = 70%%)')
+                       help='Only delete points visible in less than this fraction of images (default: 0.5 = 50%%)')
     
     args = parser.parse_args()
     

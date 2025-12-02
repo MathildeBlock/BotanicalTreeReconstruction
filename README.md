@@ -6,6 +6,10 @@ A Python toolkit for 3D tree reconstruction from aerial imagery using COLMAP str
 
 ### 1. Setup
 ```bash
+# Create Python virtual environment
+python -m venv venv
+source venv/bin/activate
+
 # Install dependencies
 pip install -r requirements.txt
 
@@ -97,7 +101,7 @@ BotanicalTreeReconstruction/
 **`run_pipeline.sh`** - LSF batch script for cluster execution with GPU allocation.
 
 - **Resources**: A100 GPU, 32GB RAM, 6-hour limit
-- **Environment**: Loads COLMAP module, activates conda environment
+- **Environment**: Loads COLMAP module, uses pip-installed requirements
 - **Logs**: Output saved to `logs/JOBID.out` and `logs/JOBID.err`
 
 ```bash

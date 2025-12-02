@@ -413,7 +413,7 @@ def parse_args():
                        help="Device for segmentation")
     parser.add_argument("--max-features", type=int, default=20000,
                        help="Maximum features for COLMAP")
-    parser.add_argument("--visibility-threshold", type=float, default=0.7,
+    parser.add_argument("--visibility-threshold", type=float, default=0.5,
                        help="Visibility threshold for filtering (0.0-1.0)")
     parser.add_argument("--combine-masks", choices=["or", "and"], default="or",
                        help="How to combine rough and fine masks")
