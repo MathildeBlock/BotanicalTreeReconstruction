@@ -197,6 +197,62 @@ class PipelineRunner:
         
         print(f"All dependencies satisfied")
 
+    def find_best_colmap_model(self, base_path: Path) -> Path:
+        """
+        Find the best COLMAP model from the reconstruction output.
+        Prioritizes: merged > largest by image count > model 0
+        """
+        sparse_dir = base_path / "sparse"
+        
+        # Check for merged model first
+        merged_model = sparse_dir / "merged"
+        if merged_model.exists() and (merged_model / "images.bin").exists():
+            print(f"Using merged COLMAP model: {merged_model}")
+            return merged_model
+        
+        # Find all numbered model directories
+        model_dirs = [d for d in sparse_dir.iterdir() if d.is_dir() and d.name.isdigit()]
+        
+        if not model_dirs:
+            raise FileNotFoundError(f"No COLMAP models found in {sparse_dir}")
+        
+        # If only one model, use it
+        if len(model_dirs) == 1:
+            model_path = model_dirs[0]
+            print(f"Using single COLMAP model: {model_path}")
+            return model_path
+        
+        # Multiple models - find the largest by image count
+        best_model = None
+        max_size = 0
+        
+        print(f"Found {len(model_dirs)} COLMAP models, selecting the largest...")
+        
+        for model_dir in model_dirs:
+            try:
+                images_file = model_dir / "images.bin"
+                if images_file.exists():
+                    # Use file size as proxy for number of images
+                    size = images_file.stat().st_size
+                    print(f"  Model {model_dir.name}: {size} bytes")
+                    if size > max_size:
+                        max_size = size
+                        best_model = model_dir
+            except Exception as e:
+                print(f"  Could not check model {model_dir}: {e}")
+        
+        if best_model:
+            print(f"Selected largest model: {best_model}")
+            return best_model
+        
+        # Fallback to model 0
+        fallback = sparse_dir / "0"
+        if fallback.exists():
+            print(f"Using fallback model: {fallback}")
+            return fallback
+        
+        raise FileNotFoundError(f"No valid COLMAP models found in {sparse_dir}")
+
     def step3_filtering(self):
         """Filter point cloud with segmentation masks"""
         print(f"\nSTEP 3: Point Cloud Filtering")
@@ -206,11 +262,19 @@ class PipelineRunner:
             # Use provided existing model
             colmap_model_path = self.colmap_input
             if not (colmap_model_path / "cameras.bin").exists():
-                # Assume it's a model directory that contains sparse/0
-                colmap_model_path = colmap_model_path / "sparse" / "0"
+                # Assume it's a model directory that contains sparse models
+                try:
+                    colmap_model_path = self.find_best_colmap_model(colmap_model_path)
+                except FileNotFoundError:
+                    # Fallback to sparse/0
+                    colmap_model_path = colmap_model_path / "sparse" / "0"
         else:
-            # Use the model we just created
-            colmap_model_path = self.colmap_output / "sparse" / "0"
+            # Use the best model from our reconstruction
+            try:
+                colmap_model_path = self.find_best_colmap_model(self.colmap_output)
+            except FileNotFoundError:
+                # Fallback to the old default
+                colmap_model_path = self.colmap_output / "sparse" / "0"
         
         cmd = [
             "python", "mask_based_filtering.py",

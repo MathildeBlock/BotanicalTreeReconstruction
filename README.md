@@ -15,6 +15,9 @@ pip install -r requirements.txt
 
 # Load COLMAP (on HPC systems)
 module load colmap/3.8-cuda-11.8-avx512
+
+# Add your aerial images to the data/raw/ folder
+cp /path/to/your/drone/images/* data/raw/
 ```
 
 ### 2. Run Complete Pipeline
@@ -23,10 +26,6 @@ cd scripts
 
 # Basic usage (full 5-step pipeline)
 python run_pipeline.py --images ../data/raw --model ../models/model.pth
-
-# High quality processing
-python run_pipeline.py --images ../data/raw --model ../models/model.pth \
-    --max-features 50000 --mask-type both --visibility-threshold 0.8
 ```
 
 ### 3. HPC Batch Execution
@@ -43,9 +42,9 @@ The complete pipeline consists of 5 automated steps:
 2. **🏗️ COLMAP Reconstruction** - Create initial 3D point cloud from images
 3. **🔍 Point Filtering** - Remove non-tree points using mask visibility  
 4. **✨ Ray Enhancement** - Add more points to sparse model via ray casting
-5. **📊 Visualization** - Create comprehensive comparison plots
+5. **📊 Visualization** - Create comparison plots
 
-**Input**: Raw aerial images + pre-trained segmentation model  
+**Input**: Raw aerial images (+ pre-trained segmentation model)  
 **Output**: Enhanced sparse 3D point cloud + visualization + processing summary
 
 ## 🗂️ Project Structure
@@ -56,7 +55,7 @@ BotanicalTreeReconstruction/
 ├── requirements.txt       # Python dependencies
 ├── .gitignore            # Git ignore patterns
 ├── .gitattributes        # Git LFS configuration
-├── data/                 # Datasets (raw images, segmentation_mask)
+├── data/                 # Datasets (raw images, segmentation masks)
 ├── models/               # Pre-trained segmentation model, Colmap models
 ├── outputs/              # Generated visualizations and summaries
 └── scripts/              # All processing scripts

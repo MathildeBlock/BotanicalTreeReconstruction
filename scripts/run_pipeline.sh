@@ -63,9 +63,7 @@ python run_pipeline.py \
     --max-features 20000 \
     --visibility-threshold 0.5 \
     --combine-masks or \
-    --viz-images 3 \
-    --filter-examples 5 \
-    --device cuda 
+    --device cuda
 
 PIPELINE_EXIT_CODE=$?
 
@@ -75,12 +73,6 @@ echo "End Time: $(date)"
 
 if [ $PIPELINE_EXIT_CODE -eq 0 ]; then
     echo "SUCCESS: Pipeline completed successfully!"
-    
-    # List outputs
-    echo "=== Generated Outputs ==="
-    find ../models -name "*$(date +%d%m)*" -type d 2>/dev/null | head -5
-    find ../outputs -name "*$(date +%d%m)*" -type f 2>/dev/null | head -5
-    
 else
     echo "ERROR: Pipeline failed with exit code $PIPELINE_EXIT_CODE"
     echo "Check the job error file for details: ${LSB_JOBID}.err"

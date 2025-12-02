@@ -58,6 +58,9 @@ def create_colmap_model(image_dir: Path, output_dir: Path, max_features: int = 3
     Returns:
         True if successful, False otherwise
     """
+    # Use GPU by default - COLMAP will automatically fall back to CPU if GPU isn't available
+    gpu_flag = "1"
+    
     # Create output directory structure
     output_dir.mkdir(parents=True, exist_ok=True)
     database_path = output_dir / "database.db"
@@ -71,6 +74,7 @@ def create_colmap_model(image_dir: Path, output_dir: Path, max_features: int = 3
     
     # Step 1: Feature extraction
     logging.info(f"Extracting features from images in: {image_dir}")
+    logging.info("Using GPU acceleration (with automatic CPU fallback)")
     feature_cmd = [
         "colmap", "feature_extractor",
         "--database_path", str(database_path),
@@ -78,7 +82,7 @@ def create_colmap_model(image_dir: Path, output_dir: Path, max_features: int = 3
         "--SiftExtraction.max_num_features", str(max_features),
         "--SiftExtraction.estimate_affine_shape", "true",
         "--SiftExtraction.domain_size_pooling", "true",
-        "--SiftExtraction.use_gpu", "1",
+        "--SiftExtraction.use_gpu", gpu_flag,
         "--SiftExtraction.max_image_size", "2400",
         "--SiftExtraction.num_threads", "4"  # Limit CPU threads to reduce memory usage
     ]
@@ -92,7 +96,7 @@ def create_colmap_model(image_dir: Path, output_dir: Path, max_features: int = 3
         "colmap", "sequential_matcher",
         "--database_path", str(database_path),
         "--SiftMatching.guided_matching", "true",
-        "--SiftMatching.use_gpu", "1"
+        "--SiftMatching.use_gpu", gpu_flag
     ]
     
     if not run_command(match_cmd, "Feature Matching"):
@@ -109,6 +113,43 @@ def create_colmap_model(image_dir: Path, output_dir: Path, max_features: int = 3
     
     if not run_command(mapper_cmd, "Sparse Reconstruction"):
         return False
+    
+    # Check for multiple models and merge if necessary
+    model_dirs = [d for d in sparse_dir.iterdir() if d.is_dir() and d.name.isdigit()]
+    if len(model_dirs) > 1:
+        logging.info(f"Found {len(model_dirs)} separate models - attempting to merge...")
+        
+        # Sort models by number of images (largest first)
+        model_sizes = []
+        for model_dir in model_dirs:
+            try:
+                # Count images in each model by checking images.bin file size as proxy
+                images_file = model_dir / "images.bin"
+                if images_file.exists():
+                    size = images_file.stat().st_size
+                    model_sizes.append((model_dir, size))
+            except:
+                model_sizes.append((model_dir, 0))
+        
+        model_sizes.sort(key=lambda x: x[1], reverse=True)
+        
+        if len(model_sizes) >= 2:
+            # Try to merge the two largest models
+            largest_model = model_sizes[0][0]
+            second_model = model_sizes[1][0]
+            merged_dir = sparse_dir / "merged"
+            
+            merge_cmd = [
+                "colmap", "model_merger",
+                "--input_path1", str(largest_model),
+                "--input_path2", str(second_model),
+                "--output_path", str(merged_dir)
+            ]
+            
+            if run_command(merge_cmd, f"Merging models {largest_model.name} and {second_model.name}"):
+                logging.info(f"Models successfully merged into: {merged_dir}")
+            else:
+                logging.warning("Model merging failed - keeping separate models")
     
     logging.info(f"COLMAP model created successfully in: {output_dir}")
     return True
