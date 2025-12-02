@@ -273,7 +273,7 @@ class PipelineRunner:
             "--ray_model", str(self.ray_output),
             "--output", str(self.viz_output),
             "--n_images", str(self.args.viz_images),
-            "--point_size", str(self.args.point_size),
+            "--point-size", str(self.args.point_size),
             "--mask_type", "both"
         ]
         

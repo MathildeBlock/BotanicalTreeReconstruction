@@ -1,8 +1,8 @@
 #!/bin/bash
 #BSUB -J botanical_pipeline
 #BSUB -q gpua100
-#BSUB -W 04:00
-#BSUB -R "rusage[mem=8GB]"
+#BSUB -W 06:00
+#BSUB -R "rusage[mem=16GB]"
 #BSUB -n 4
 #BSUB -R "span[hosts=1]"
 #BSUB -gpu "num=1:mode=exclusive_process"
@@ -61,13 +61,13 @@ python run_pipeline.py \
     --images "$IMAGES_DIR" \
     --model "$MODEL_PATH" \
     --mask-type both \
-    --max-features 20000 \
+    --max-features 30000 \
     --visibility-threshold 0.7 \
     --combine-masks or \
     --viz-images 3 \
-    --point-size 2.0 \
     --filter-examples 5 \
-    --device cuda
+    --device cuda \
+    --skip-rays
 
 PIPELINE_EXIT_CODE=$?
 

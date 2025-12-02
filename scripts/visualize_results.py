@@ -4,7 +4,8 @@ pipeline_visualization.py - Comprehensive Pipeline Visualization
 
 This script creates a comprehensive visualization showing the complete botanical tree
 reconstruction pipeline: original images, segmentation masks, projected points from
-original COLMAP model, projected points from filtered COLMAP model, and ray-added points.
+original COLMAP model, projected points from filtered COLMAP model, and newly added ray points.
+Optionally shows combined filtered + ray points.
 """
 
 import argparse
@@ -14,6 +15,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 import sys
 import random
+from datetime import datetime
 
 # Add the parent directory to the path to import read_write_model
 sys.path.append(str(Path(__file__).parent))
@@ -26,11 +28,13 @@ def parse_args():
     parser.add_argument('--original_model', type=str, required=True, help='Path to original COLMAP model directory')
     parser.add_argument('--filtered_model', type=str, required=True, help='Path to filtered COLMAP model directory')
     parser.add_argument('--ray_model', type=str, help='Path to ray-enhanced COLMAP model directory')
-    parser.add_argument('--output', type=str, required=True, help='Output image path')
+    parser.add_argument('--output', type=str, default=f'../outputs/pipeline_viz_{datetime.now().strftime("%m%d_%H%M")}.png', help='Output image path')
     parser.add_argument('--n_images', type=int, default=3, help='Number of images to sample for visualization')
     parser.add_argument('--point-size', type=float, default=1.0, help='Size of projected points', dest='point_size')
     parser.add_argument('--mask_type', type=str, choices=['rough', 'fine', 'both'], default='both', 
                        help='Type of masks to use - should match what was used in filtering (rough, fine, or both)')
+    parser.add_argument('--show_combined', action='store_true', 
+                       help='Show an additional column with combined filtered + ray points')
     
     return parser.parse_args()
 
@@ -107,14 +111,30 @@ def project_points(points_3d, camera, image):
 def load_model_data(model_path):
     """Load COLMAP model and extract 3D points"""
     if not model_path or not Path(model_path).exists():
-        return None, None, np.array([])
+        return None, None, np.array([]), {}
     
     cameras, images, points3D = read_model(model_path)
     
     # Extract 3D point coordinates
     points = np.array([point.xyz for point in points3D.values()])
     
-    return cameras, images, points
+    return cameras, images, points, points3D
+
+def get_new_ray_points(filtered_points3D, ray_points3D):
+    """Identify points that were added by ray enhancement"""
+    if not filtered_points3D or not ray_points3D:
+        return np.array([])
+    
+    # Get point IDs from filtered model
+    filtered_ids = set(filtered_points3D.keys())
+    
+    # Find new points in ray model (points not in filtered model)
+    new_points = []
+    for point_id, point in ray_points3D.items():
+        if point_id not in filtered_ids:
+            new_points.append(point.xyz)
+    
+    return np.array(new_points) if new_points else np.array([])
 
 def find_mask_file(masks_dir, image_name, mask_type):
     """Find corresponding mask file for an image"""
@@ -200,13 +220,17 @@ def create_pipeline_visualization(args):
     filtered_data = load_model_data(args.filtered_model)
     ray_data = load_model_data(args.ray_model)
     
-    cameras_orig, images_orig, points_orig = original_data
-    cameras_filt, images_filt, points_filt = filtered_data
-    cameras_ray, images_ray, points_ray = ray_data
+    cameras_orig, images_orig, points_orig, points3D_orig = original_data
+    cameras_filt, images_filt, points_filt, points3D_filt = filtered_data
+    cameras_ray, images_ray, points_ray, points3D_ray = ray_data
+    
+    # Get newly added ray points
+    new_ray_points = get_new_ray_points(points3D_filt, points3D_ray)
     
     print(f"Original model: {len(points_orig)} points")
     print(f"Filtered model: {len(points_filt)} points") 
     print(f"Ray-enhanced model: {len(points_ray)} points")
+    print(f"New ray points: {len(new_ray_points)} points")
     
     # Get available images
     image_dir = Path(args.images)
@@ -239,15 +263,17 @@ def create_pipeline_visualization(args):
     # Sample images for visualization
     sample_images = random.sample(available_images, min(args.n_images, len(available_images)))
     
-    # Create visualization with 5 columns: original, mask, original_points, filtered_points, ray_points
-    n_cols = 5
+    # Create visualization - dynamic number of columns based on options
+    n_cols = 6 if args.show_combined else 5
     n_rows = len(sample_images)
     
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(20, 4 * n_rows))
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(4 * n_cols, 4 * n_rows))
     if n_rows == 1:
         axes = axes.reshape(1, -1)
     
-    column_titles = ['Original Image', 'Segmentation Mask', 'Original COLMAP', 'Filtered COLMAP', 'Ray Enhanced']
+    column_titles = ['Original Image', 'Segmentation Mask', 'Original COLMAP', 'Filtered COLMAP', 'New Ray Points']
+    if args.show_combined:
+        column_titles.append('Combined (Filtered + Ray)')
     
     # Set column titles
     for col, title in enumerate(column_titles):
@@ -294,31 +320,45 @@ def create_pipeline_visualization(args):
         axes[row, 1].set_xticks([])
         axes[row, 1].set_yticks([])
         
-        # Get camera and image data for projections
-        camera = None
-        image_data = None
+        # Get camera and image data for projections - find from each model separately
+        camera_orig = image_data_orig = None
+        camera_filt = image_data_filt = None  
+        camera_ray = image_data_ray = None
         
-        # Try to find camera and image data from available models
-        for cameras_dict, images_dict in [(cameras_orig, images_orig), 
-                                         (cameras_filt, images_filt), 
-                                         (cameras_ray, images_ray)]:
-            if cameras_dict and images_dict:
-                camera = list(cameras_dict.values())[0]  # Assume single camera
-                for img_data in images_dict.values():
-                    if img_data.name == image_name:
-                        image_data = img_data
-                        break
-                if camera and image_data:
+        # Find camera and image data for each model
+        if cameras_orig and images_orig:
+            camera_orig = list(cameras_orig.values())[0]
+            for img_data in images_orig.values():
+                if img_data.name == image_name:
+                    image_data_orig = img_data
                     break
-        
-        # Columns 3-5: Point projections
-        point_data = [
-            (points_orig, 'red', 'Original'),
-            (points_filt, 'blue', 'Filtered'),
-            (points_ray, 'green', 'Ray Enhanced')
+                    
+        if cameras_filt and images_filt:
+            camera_filt = list(cameras_filt.values())[0] 
+            for img_data in images_filt.values():
+                if img_data.name == image_name:
+                    image_data_filt = img_data
+                    break
+                    
+        if cameras_ray and images_ray:
+            camera_ray = list(cameras_ray.values())[0]
+            for img_data in images_ray.values():
+                if img_data.name == image_name:
+                    image_data_ray = img_data
+                    break
+
+        # Columns 3-5 (or 6): Point projections with model-specific camera data
+        projection_data = [
+            (points_orig, 'red', 'Original', camera_orig, image_data_orig),
+            (points_filt, 'blue', 'Filtered', camera_filt, image_data_filt),
+            (new_ray_points, 'green', 'New Ray Points', camera_ray, image_data_ray)
         ]
         
-        for col_idx, (points, color, label) in enumerate(point_data, start=2):
+        # Add combined view if requested
+        if args.show_combined:
+            projection_data.append((points_ray, 'purple', 'Combined', camera_ray, image_data_ray))
+        
+        for col_idx, (points, color, label, camera, image_data) in enumerate(projection_data, start=2):
             axes[row, col_idx].imshow(img)
             
             if camera and image_data and len(points) > 0:
@@ -330,7 +370,10 @@ def create_pipeline_visualization(args):
                 else:
                     axes[row, col_idx].set_xlabel('No points visible')
             else:
-                axes[row, col_idx].set_xlabel('No model data')
+                if len(points) == 0 and label == 'New Ray Points':
+                    axes[row, col_idx].set_xlabel('No new ray points')
+                else:
+                    axes[row, col_idx].set_xlabel('No model data')
             
             axes[row, col_idx].set_xlim(0, img.shape[1])
             axes[row, col_idx].set_ylim(img.shape[0], 0)

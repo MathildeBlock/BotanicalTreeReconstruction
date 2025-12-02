@@ -102,7 +102,7 @@ Examples:
                        help='Suffix for fine mask files (default: _fine.png)')
     parser.add_argument('--img-ext', default='.JPG',
                        help='Image file extension to replace (default: .JPG)')
-    parser.add_argument('--visibility-threshold', type=float, default=0.7,
+    parser.add_argument('--visibility-threshold', type=float, default=0.5,
                        help='Only delete points visible in less than this fraction of images (default: 0.7 = 70%%)')
     
     args = parser.parse_args()
@@ -154,7 +154,8 @@ Examples:
     if args.output:
         output_model_dir = args.output
     else:
-        output_model_dir = os.path.join(args.colmap, f"filtered_{args.combine}_{args.threshold}_{timestamp}")
+        vis_thresh_str = f"{args.visibility_threshold:.1f}".replace('.', '')
+        output_model_dir = os.path.join(args.colmap, f"filtered_{args.combine}_mask{args.threshold}_vis{vis_thresh_str}_{timestamp}")
     
     viz_dir = f"{output_model_dir}_visualizations"
     os.makedirs(output_model_dir, exist_ok=True)

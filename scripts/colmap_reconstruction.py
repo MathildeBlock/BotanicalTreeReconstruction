@@ -46,7 +46,7 @@ def run_command(cmd: list[str], description: str) -> bool:
         return False
 
 
-def create_colmap_model(image_dir: Path, output_dir: Path, max_features: int = 20000) -> bool:
+def create_colmap_model(image_dir: Path, output_dir: Path, max_features: int = 30000) -> bool:
     """
     Create a COLMAP model from an image directory.
     
@@ -76,7 +76,11 @@ def create_colmap_model(image_dir: Path, output_dir: Path, max_features: int = 2
         "--database_path", str(database_path),
         "--image_path", str(image_dir),
         "--SiftExtraction.max_num_features", str(max_features),
-        "--SiftExtraction.use_gpu", "1"
+        "--SiftExtraction.estimate_affine_shape", "true",
+        "--SiftExtraction.domain_size_pooling", "true",
+        "--SiftExtraction.use_gpu", "1",
+        "--SiftExtraction.max_image_size", "2400",
+        "--SiftExtraction.num_threads", "4"  # Limit CPU threads to reduce memory usage
     ]
     
     if not run_command(feature_cmd, f"Feature Extraction ({max_features} features per image)"):
@@ -132,7 +136,7 @@ def main():
     parser.add_argument(
         "--max-features",
         type=int,
-        default=20000,
+        default=30000,
         help="Maximum number of features to extract per image"
     )
     parser.add_argument(

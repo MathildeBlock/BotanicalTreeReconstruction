@@ -76,7 +76,7 @@ BotanicalTreeReconstruction/
 - `--model FILE` - Path to segmentation model (.pth file)
 - `--mask-type {rough,fine,both}` - Type of masks to generate (default: both)
 - `--max-features INT` - Maximum features for COLMAP (default: 20000)  
-- `--visibility-threshold FLOAT` - Point filtering threshold 0.0-1.0 (default: 0.7)
+- `--visibility-threshold FLOAT` - Point filtering threshold 0.0-1.0 (default: 0.5)
 - `--combine-masks {or,and}` - How to combine rough/fine masks (default: or)
 
 ### Skip Options:
@@ -96,7 +96,7 @@ BotanicalTreeReconstruction/
 
 **`run_pipeline.sh`** - LSF batch script for cluster execution with GPU allocation.
 
-- **Resources**: A100 GPU, 8GB RAM, 4-hour limit
+- **Resources**: A100 GPU, 32GB RAM, 6-hour limit
 - **Environment**: Loads COLMAP module, activates conda environment
 - **Logs**: Output saved to `logs/JOBID.out` and `logs/JOBID.err`
 
@@ -147,7 +147,7 @@ python colmap_reconstruction.py ../data/raw
 # High quality with 50k features
 python colmap_reconstruction.py ../data/raw \
     --output ../models/high_quality_colmap \
-    --max-features 50000
+    --max-features 30000
 ```
 
 ### mask_based_filtering.py
@@ -159,7 +159,7 @@ Filter COLMAP 3D points using segmentation masks with visibility-based threshold
 - `--rough-mask DIR` - Rough segmentation masks directory (required)
 - `--fine-mask DIR` - Fine segmentation masks directory (required)
 - `--output DIR` - Output directory for filtered model
-- `--visibility-threshold FLOAT` - Keep points visible in ≥this fraction of images (default: 0.7)
+- `--visibility-threshold FLOAT` - Keep points visible in ≥this fraction of images (default: 0.5)
 - `--threshold INT` - Mask pixel threshold value (default: 10)
 - `--combine {or,and}` - Mask combination method (default: or)
 - `--examples INT` - Number of visualization examples to save (default: 5)
@@ -172,7 +172,7 @@ python mask_based_filtering.py \
     --images ../data/raw \
     --rough-mask ../data/segmentation_masks \
     --fine-mask ../data/segmentation_masks \
-    --visibility-threshold 0.7 \
+    --visibility-threshold 0.5 \
     --combine or
 ```
 
@@ -214,12 +214,13 @@ Create comprehensive visualizations showing all pipeline stages.
 - `--output FILE` - Output visualization image path (required)
 - `--masks DIR` - Segmentation masks directory
 - `--n_images INT` - Number of sample images to visualize (default: 3)
-- `--point_size FLOAT` - Size of projected points (default: 1.0)
+- `--point-size FLOAT` - Size of projected points (default: 1.0)
 - `--mask_type {rough,fine,both}` - Type of masks to display (default: both)
+- `--show_combined` - Show additional column with combined filtered + ray points
 
 **Usage:**
 ```bash
-# Create 5-column visualization
+# Create 5-column visualization (default)
 python visualize_results.py \
     --images ../data/raw \
     --masks ../data/segmentation_masks \
@@ -228,14 +229,28 @@ python visualize_results.py \
     --ray_model ../models/colmap_ray_enhanced \
     --output ../outputs/pipeline_comparison.png \
     --n_images 3
+
+# Create 6-column visualization with combined view
+python visualize_results.py \
+    --images ../data/raw \
+    --masks ../data/segmentation_masks \
+    --original_model ../models/colmap_reconstruction/sparse/0 \
+    --filtered_model ../models/colmap_filtered \
+    --ray_model ../models/colmap_ray_enhanced \
+    --output ../outputs/pipeline_comparison.png \
+    --n_images 3 \
+    --show_combined
 ```
 
 Creates a 5-column visualization showing:
 1. **Original Image** - Raw input images
 2. **Segmentation Mask** - Combined tree segmentation overlaid on images  
-3. **Original COLMAP** - Points from initial reconstruction
-4. **Filtered COLMAP** - Points after mask-based filtering  
-5. **Ray Enhanced** - Enhanced sparse point cloud after ray casting
+3. **Original COLMAP** - Points from initial reconstruction (red)
+4. **Filtered COLMAP** - Points after mask-based filtering (blue)
+5. **New Ray Points** - Only newly added points from ray enhancement (green)
+
+With `--show_combined`, adds a 6th column:
+6. **Combined (Filtered + Ray)** - All points in final enhanced model (purple)
 
 
 ## 📊 Output Structure
