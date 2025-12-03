@@ -134,13 +134,18 @@ python segmentation_inference.py \
 ```
 
 ### colmap_reconstruction.py
-Create COLMAP 3D reconstruction from images.
+Create COLMAP 3D reconstruction from images with automatic model merging.
 
 **Key Arguments:**
 - `image_dir` - Path to input images directory (required)
 - `--output DIR` - Output directory (default: ../models/colmap_output)
 - `--max-features INT` - Max features per image (default: 20000)
 - `--log-level {DEBUG,INFO,WARNING,ERROR}` - Logging level
+
+**Features:**
+- **Automatic GPU/CPU detection** - Uses GPU acceleration when available, falls back to CPU
+- **Model merging** - Automatically merges multiple reconstructions when possible
+- **Smart model selection** - Pipeline automatically uses the largest/best reconstruction
 
 **Usage:**
 ```bash
@@ -150,7 +155,7 @@ python colmap_reconstruction.py ../data/raw
 # High quality with 50k features
 python colmap_reconstruction.py ../data/raw \
     --output ../models/high_quality_colmap \
-    --max-features 30000
+    --max-features 50000
 ```
 
 ### mask_based_filtering.py
@@ -178,6 +183,8 @@ python mask_based_filtering.py \
     --visibility-threshold 0.5 \
     --combine or
 ```
+
+**Note:** The pipeline automatically selects the best COLMAP model (merged model if available, otherwise the largest reconstruction).
 
 ### ray_based_enhancement.py
 Enhance sparse COLMAP model by adding more points using ray-casting and voxel-based sampling.
@@ -230,7 +237,6 @@ python visualize_results.py \
     --original_model ../models/colmap_reconstruction/sparse/0 \
     --filtered_model ../models/colmap_filtered \
     --ray_model ../models/colmap_ray_enhanced \
-    --output ../outputs/pipeline_comparison.png \
     --n_images 3
 
 # Create 6-column visualization with combined view
@@ -240,7 +246,6 @@ python visualize_results.py \
     --original_model ../models/colmap_reconstruction/sparse/0 \
     --filtered_model ../models/colmap_filtered \
     --ray_model ../models/colmap_ray_enhanced \
-    --output ../outputs/pipeline_comparison.png \
     --n_images 3 \
     --show_combined
 ```
@@ -261,13 +266,19 @@ With `--show_combined`, adds a 6th column:
 After running the complete pipeline, your outputs will be organized as:
 
 ```
+data/
+└── segmentation_masks/          # Step 1 - Generated masks
+    ├── image1_rough.png
+    ├── image1_fine.png
+    ├── image2_rough.png
+    └── image2_fine.png
+    
 models/
 ├── colmap_reconstruction/    # Step 2 - Initial COLMAP reconstruction
 │   ├── database.db
-│   └── sparse/0/
-│       ├── cameras.bin
-│       ├── images.bin
-│       └── points3D.bin
+│   └── sparse/
+│       ├── 0/               # Best reconstruction (merged if multiple existed)
+│       └── 1/               # Second reconstruction (if multiple)
 ├── colmap_filtered/         # Step 3 - Filtered points using masks
 │   ├── cameras.bin
 │   ├── images.bin
@@ -282,12 +293,10 @@ outputs/
 ├── processing_summary.txt       # Detailed processing log
 └── point_statistics.txt         # Point counts for each stage
 
-data/
-└── segmentation_masks/          # Step 1 - Generated masks
-    ├── image1_rough.png
-    ├── image1_fine.png
-    ├── image2_rough.png
-    └── image2_fine.png
+**Notes:**
+- **Multiple COLMAP models**: If COLMAP creates disconnected reconstructions, both will be kept and the pipeline will automatically use the largest one
+- **Model merging**: When possible, separate reconstructions are merged and the result overwrites the smaller model
+- **Automatic selection**: The pipeline selects the best model (largest by points/images) without manual intervention
 ```
 
 ## 🔧 Prerequisites
