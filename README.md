@@ -200,6 +200,7 @@ Enhance sparse COLMAP model by adding more points using ray-casting and voxel-ba
 - `--depth_samples INT` - Depth samples per ray (default: 50)
 - `--voxel_size FLOAT` - Voxel size in meters (default: 0.02)
 - `--min_image_support INT` - Minimum images supporting a voxel (default: 3)
+- `--chunk_size FLOAT` - Spatial chunk size in meters for processing (smaller = less memory, more runtime)(default: 4)
 
 **Usage:**
 ```bash
@@ -299,61 +300,6 @@ outputs/
 - **Automatic selection**: The pipeline selects the best model (largest by points/images) without manual intervention
 ```
 
-## 🔧 Prerequisites
-
-- **Python 3.7+** with pip
-- **COLMAP 3.8+** installed and available in PATH
-- **CUDA-capable GPU** (recommended for segmentation and COLMAP)
-- **Git LFS** for model files (`git lfs install`)
-
-### Installing COLMAP
-
-**Ubuntu/Debian:**
-```bash
-sudo apt update
-sudo apt install colmap
-```
-
-**From source or HPC systems:**
-```bash
-# Load as module (HPC)
-module load colmap/3.8-cuda-11.8-avx512
-
-# Or build from source - see COLMAP documentation
-```
-
-## 🏁 Complete Example Workflow
-
-```bash
-# 1. Clone and setup
-git clone <your-repo>
-cd BotanicalTreeReconstruction
-pip install -r requirements.txt
-
-# 2. Add your aerial images
-cp /path/to/your/drone/images/* data/raw/
-
-# 3. Run complete pipeline
-cd scripts
-python run_pipeline.py --images ../data/raw --model ../models/model.pth
-
-# 4. Check results
-ls ../models/colmap_ray_enhanced/  # Final enhanced sparse point cloud
-ls ../outputs/                     # Visualizations and summaries
-```
-
-### For HPC Systems:
-```bash
-# Submit batch job
-bsub < run_pipeline.sh
-
-# Monitor progress
-bjobs
-tail -f logs/[JOBID].out
-
-# Results in same output structure
-```
-
 ## 🚨 Troubleshooting
 
 ### Common Issues:
@@ -376,36 +322,4 @@ tail -f logs/[JOBID].out
 - Check image directory structure: images should be directly in specified folder
 - Supported formats: .jpg, .jpeg, .png
 - Ensure absolute paths or run from correct directory
-
-## 📚 Citations & References
-
-This pipeline combines several established techniques:
-
-- **COLMAP**: Schönberger & Frahm. "Structure-from-Motion Revisited." CVPR 2016.
-- **DeepLabV3**: Chen et al. "Rethinking Atrous Convolution for Semantic Segmentation." arXiv 2017.
-- **Ray Casting**: Custom implementation for point densification in vegetation scenes.
-
-## 📄 License
-
-[Add your license information here]
-
----
-
-**🌟 Quick Commands Summary:**
-
-```bash
-# Complete pipeline (recommended)
-python run_pipeline.py --images ../data/raw --model ../models/model.pth
-
-# HPC batch submission  
-bsub < run_pipeline.sh
-
-# High quality processing
-python run_pipeline.py --images ../data/raw --model ../models/model.pth \
-    --max-features 50000 --visibility-threshold 0.8
-
-# Skip time-consuming steps
-python run_pipeline.py --images ../data/raw --model ../models/model.pth \
-    --skip-segmentation --skip-rays
-```
 
