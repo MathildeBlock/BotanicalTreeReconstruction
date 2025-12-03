@@ -225,7 +225,7 @@ Create comprehensive visualizations showing all pipeline stages.
 - `--output FILE` - Output visualization image path (required)
 - `--masks DIR` - Segmentation masks directory
 - `--n_images INT` - Number of sample images to visualize (default: 3)
-- `--point-size FLOAT` - Size of projected points (default: 1.0)
+- `--point_size FLOAT` - Size of projected points (default: 1.0)
 - `--mask_type {rough,fine,both}` - Type of masks to display (default: both)
 - `--show_combined` - Show additional column with combined filtered + ray points
 
