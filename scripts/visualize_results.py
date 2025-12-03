@@ -30,7 +30,7 @@ def parse_args():
     parser.add_argument('--ray_model', type=str, help='Path to ray-enhanced COLMAP model directory')
     parser.add_argument('--output', type=str, default=f'../outputs/pipeline_viz_{datetime.now().strftime("%m%d_%H%M")}.png', help='Output image path')
     parser.add_argument('--n_images', type=int, default=3, help='Number of images to sample for visualization')
-    parser.add_argument('--point-size', type=float, default=1.0, help='Size of projected points', dest='point_size')
+    parser.add_argument('--point_size', type=float, default=1.0, help='Size of projected points', dest='point_size')
     parser.add_argument('--mask_type', type=str, choices=['rough', 'fine', 'both'], default='both', 
                        help='Type of masks to use - should match what was used in filtering (rough, fine, or both)')
     parser.add_argument('--show_combined', action='store_true', 
@@ -121,18 +121,20 @@ def load_model_data(model_path):
     return cameras, images, points, points3D
 
 def get_new_ray_points(filtered_points3D, ray_points3D):
-    """Identify points that were added by ray enhancement"""
+    """Identify points that were added by ray enhancement (green points)"""
     if not filtered_points3D or not ray_points3D:
         return np.array([])
     
     # Get point IDs from filtered model
     filtered_ids = set(filtered_points3D.keys())
     
-    # Find new points in ray model (points not in filtered model)
+    # Find new points in ray model that are green (RGB = [0, 255, 0])
     new_points = []
     for point_id, point in ray_points3D.items():
         if point_id not in filtered_ids:
-            new_points.append(point.xyz)
+            # Additional check: only include green points (ray-enhanced points)
+            if np.array_equal(point.rgb, [0, 255, 0]):
+                new_points.append(point.xyz)
     
     return np.array(new_points) if new_points else np.array([])
 

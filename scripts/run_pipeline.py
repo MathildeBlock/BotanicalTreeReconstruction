@@ -337,7 +337,7 @@ class PipelineRunner:
             "--ray_model", str(self.ray_output),
             "--output", str(self.viz_output),
             "--n_images", str(self.args.viz_images),
-            "--point-size", str(self.args.point_size),
+            "--point_size", str(self.args.point_size),
             "--mask_type", "both"
         ]
         
@@ -485,7 +485,7 @@ def parse_args():
     # Output options
     parser.add_argument("--viz-images", type=int, default=3,
                        help="Number of images for visualization")
-    parser.add_argument("--point-size", type=float, default=1.0,
+    parser.add_argument("--point_size", type=float, default=1.0,
                        help="Point size for visualization")
     parser.add_argument("--filter-examples", type=int, default=5,
                        help="Number of filtering examples to save")
